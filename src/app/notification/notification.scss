@@ -1,0 +1,264 @@
+/* Notifications System - Apple Liquid Glass Design */
+
+.notifications-container {
+  position: fixed;
+  top: 120px; // Más abajo para no invadir el status island
+  right: 24px;
+  z-index: 9999;
+  max-width: 380px; // Más pequeño para no interferir
+  width: 100%;
+  pointer-events: none;
+  
+  // Responsivo - asegurar que no invada elementos del mapa
+  @media (max-width: 768px) {
+    top: 140px;
+    right: 15px;
+    max-width: 340px;
+  }
+  
+  @media (max-width: 480px) {
+    top: 150px;
+    right: 10px;
+    max-width: 300px;
+  }
+  
+  &.has-notifications {
+    pointer-events: auto;
+  }
+}
+
+.notification-popup {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  margin-bottom: 16px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.25),
+    0 12px 24px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  
+  // Animaciones de entrada y salida
+  opacity: 0;
+  transform: translateX(100%) scale(0.9);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  &.notification-enter {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  
+  &.notification-exit {
+    opacity: 0;
+    transform: translateX(100%) scale(0.8);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  // Efectos hover
+  &:hover {
+    transform: translateX(0) scale(1.02);
+    box-shadow: 
+      0 30px 60px rgba(0, 0, 0, 0.3),
+      0 15px 30px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  position: relative;
+}
+
+.notification-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.notification-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 6px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.notification-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.notification-time {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.notification-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  span {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1;
+    font-weight: 300;
+  }
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+    
+    span {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.3), 
+    rgba(255, 255, 255, 0.6), 
+    rgba(255, 255, 255, 0.3)
+  );
+  border-radius: 0 0 20px 20px;
+  animation: notification-progress linear forwards;
+  transform-origin: left;
+}
+
+@keyframes notification-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+// Estilos específicos por tipo de notificación
+.notification-success {
+  border-left: 4px solid #4ade80;
+  
+  .notification-icon {
+    color: #4ade80;
+  }
+}
+
+.notification-warning {
+  border-left: 4px solid #fbbf24;
+  
+  .notification-icon {
+    color: #fbbf24;
+  }
+}
+
+.notification-error {
+  border-left: 4px solid #f87171;
+  
+  .notification-icon {
+    color: #f87171;
+  }
+}
+
+.notification-info {
+  border-left: 4px solid #60a5fa;
+  
+  .notification-icon {
+    color: #60a5fa;
+  }
+}
+
+.notification-pet-alert {
+  border-left: 4px solid #a855f7;
+  background: rgba(168, 85, 247, 0.05);
+  
+  .notification-icon {
+    color: #a855f7;
+  }
+  
+  &:hover {
+    background: rgba(168, 85, 247, 0.08);
+  }
+}
+
+// Animaciones adicionales para entrada escalonada
+.notifications-container .notification-popup:nth-child(n+2) {
+  animation-delay: 0.1s;
+}
+
+.notifications-container .notification-popup:nth-child(n+3) {
+  animation-delay: 0.2s;
+}
+
+.notifications-container .notification-popup:nth-child(n+4) {
+  animation-delay: 0.3s;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .notifications-container {
+    right: 16px;
+    left: 16px;
+    max-width: none;
+  }
+  
+  .notification-content {
+    padding: 16px;
+    gap: 12px;
+  }
+  
+  .notification-title {
+    font-size: 15px;
+  }
+  
+  .notification-message {
+    font-size: 13px;
+  }
+}
+
+// Dark mode optimizations
+@media (prefers-color-scheme: dark) {
+  .notification-popup {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  .notification-close {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}

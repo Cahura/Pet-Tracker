@@ -114,41 +114,184 @@ export interface LocationAlert {
 
     <!-- Modal para añadir zona -->
     <div class="add-zone-modal" [class.show]="showAddZoneModal" (click)="closeModal()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Añadir Zona Segura</h3>
-          <button class="close-btn" (click)="closeModal()">
+      <div class="add-modal-content liquid-glass" (click)="$event.stopPropagation()">
+        <div class="add-modal-header">
+          <div class="header-icon">
+            <i class="fas fa-plus"></i>
+          </div>
+          <div class="header-text">
+            <h3>Añadir Zona Segura</h3>
+            <p>Crea una nueva zona de seguridad</p>
+          </div>
+          <button class="close-btn elegant" (click)="closeModal()">
             <i class="fas fa-times"></i>
           </button>
         </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Nombre de la zona</label>
-            <input type="text" [(ngModel)]="newZone.name" placeholder="Ej: Casa, Parque, Oficina">
-          </div>
-          <div class="form-group">
-            <label>Tipo de zona</label>
-            <select [(ngModel)]="newZone.type">
-              <option value="home">Casa</option>
-              <option value="park">Parque</option>
-              <option value="work">Trabajo</option>
-              <option value="custom">Personalizada</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Radio (metros)</label>
-            <input type="number" [(ngModel)]="newZone.radius" min="10" max="1000" step="10">
-          </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="newZone.notifications">
-              <span>Recibir notificaciones</span>
-            </label>
+        
+        <div class="add-modal-body">
+          <div class="form-section">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label>Nombre de la zona</label>
+                <input type="text" [(ngModel)]="newZone.name" 
+                       placeholder="Ej: Casa, Parque, Oficina"
+                       class="elegant-input">
+              </div>
+              
+              <div class="form-group">
+                <label>Tipo de zona</label>
+                <select [(ngModel)]="newZone.type" class="elegant-select">
+                  <option value="home">🏠 Casa</option>
+                  <option value="park">🌳 Parque</option>
+                  <option value="work">💼 Trabajo</option>
+                  <option value="custom">📍 Personalizada</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Radio (metros)</label>
+                <div class="range-input-group">
+                  <input type="range" [(ngModel)]="newZone.radius" 
+                         min="10" max="1000" step="10" 
+                         class="elegant-range">
+                  <span class="range-value">{{ newZone.radius }}m</span>
+                </div>
+              </div>
+              
+              <div class="form-group full-width">
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <span class="toggle-title">Recibir notificaciones</span>
+                    <span class="toggle-desc">Alertas cuando entre/salga de la zona</span>
+                  </div>
+                  <label class="elegant-toggle">
+                    <input type="checkbox" [(ngModel)]="newZone.notifications">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="cancel-btn" (click)="closeModal()">Cancelar</button>
-          <button class="save-btn" (click)="saveZone()" [disabled]="!newZone.name">Guardar</button>
+        
+        <div class="add-modal-footer">
+          <button class="btn-secondary elegant" (click)="closeModal()">
+            <i class="fas fa-times"></i>
+            <span>Cancelar</span>
+          </button>
+          <button class="btn-primary elegant" (click)="saveZone()" [disabled]="!newZone.name">
+            <i class="fas fa-check"></i>
+            <span>Guardar Zona</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal elegante para editar zona -->
+    <div class="edit-zone-modal" [class.show]="showEditZoneModal" (click)="closeEditModal()">
+      <div class="edit-modal-content liquid-glass" (click)="$event.stopPropagation()">
+        <div class="edit-modal-header">
+          <div class="header-icon">
+            <i class="fas fa-edit"></i>
+          </div>
+          <div class="header-text">
+            <h3>Editar Zona Segura</h3>
+            <p>Personaliza tu zona de seguridad</p>
+          </div>
+          <button class="close-btn elegant" (click)="closeEditModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="edit-modal-body" *ngIf="editingZone">
+          <div class="form-section">
+            <h4>Información Básica</h4>
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label>Nombre de la zona</label>
+                <input type="text" [(ngModel)]="editingZone.name" 
+                       placeholder="Ej: Casa, Parque, Oficina"
+                       class="elegant-input">
+              </div>
+              
+              <div class="form-group">
+                <label>Tipo de zona</label>
+                <select [(ngModel)]="editingZone.type" class="elegant-select">
+                  <option value="home">🏠 Casa</option>
+                  <option value="park">🌳 Parque</option>
+                  <option value="work">💼 Trabajo</option>
+                  <option value="custom">📍 Personalizada</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Radio (metros)</label>
+                <div class="range-input-group">
+                  <input type="range" [(ngModel)]="editingZone.radius" 
+                         min="10" max="1000" step="10" 
+                         class="elegant-range">
+                  <span class="range-value">{{ editingZone.radius }}m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4>Configuración</h4>
+            <div class="toggle-group">
+              <div class="toggle-item">
+                <div class="toggle-info">
+                  <span class="toggle-title">Zona activa</span>
+                  <span class="toggle-desc">Recibir alertas para esta zona</span>
+                </div>
+                <label class="elegant-toggle">
+                  <input type="checkbox" [(ngModel)]="editingZone.isActive">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              
+              <div class="toggle-item">
+                <div class="toggle-info">
+                  <span class="toggle-title">Notificaciones</span>
+                  <span class="toggle-desc">Alertas push cuando entre/salga</span>
+                </div>
+                <label class="elegant-toggle">
+                  <input type="checkbox" [(ngModel)]="editingZone.notifications">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section preview-section">
+            <h4>Vista Previa</h4>
+            <div class="zone-preview">
+              <div class="preview-icon">
+                <i class="fas" [class.fa-home]="editingZone.type === 'home'" 
+                                [class.fa-tree]="editingZone.type === 'park'"
+                                [class.fa-briefcase]="editingZone.type === 'work'"
+                                [class.fa-map-marker-alt]="editingZone.type === 'custom'"></i>
+              </div>
+              <div class="preview-details">
+                <h5>{{ editingZone.name || 'Nombre de zona' }}</h5>
+                <p>Radio de {{ editingZone.radius }}m • {{ getZoneTypeText(editingZone.type) }}</p>
+                <span class="preview-status" [class.active]="editingZone.isActive">
+                  {{ editingZone.isActive ? '✓ Activa' : '○ Inactiva' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="edit-modal-footer">
+          <button class="btn-secondary elegant" (click)="closeEditModal()">
+            <i class="fas fa-times"></i>
+            <span>Cancelar</span>
+          </button>
+          <button class="btn-primary elegant" (click)="saveEditedZone()" [disabled]="!editingZone?.name">
+            <i class="fas fa-check"></i>
+            <span>Guardar Cambios</span>
+          </button>
         </div>
       </div>
     </div>
@@ -562,6 +705,565 @@ export interface LocationAlert {
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    /* Estilos para controles de mapa */
+    .map-controls {
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .safe-zone-map-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--liquid-glass-bg);
+      backdrop-filter: blur(var(--liquid-glass-blur));
+      border: 1px solid var(--liquid-glass-border);
+      border-radius: var(--border-radius-lg);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      box-shadow: var(--liquid-glass-shadow);
+    }
+
+    .safe-zone-map-toggle:hover {
+      background: var(--liquid-glass-hover);
+      transform: translateY(-1px);
+    }
+
+    .safe-zone-map-toggle.active {
+      background: rgba(52, 199, 89, 0.15);
+      border-color: rgba(52, 199, 89, 0.3);
+      color: var(--success-color);
+    }
+
+    .safe-zone-map-toggle i {
+      color: var(--text-primary);
+      font-size: 16px;
+    }
+
+    .safe-zone-map-toggle.active i {
+      color: var(--success-color);
+    }
+
+    /* Estilos para el modal de añadir zona - mismo estilo que edición */
+    .add-zone-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10001;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+
+    .add-zone-modal.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .add-modal-content {
+      background: var(--liquid-glass-bg);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid var(--liquid-glass-border);
+      border-radius: 32px;
+      width: 95%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+      transform: scale(0.9) translateY(40px);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .add-zone-modal.show .add-modal-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .add-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 32px 32px 0 32px;
+      position: relative;
+    }
+
+    .add-modal-header .header-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--success-color), var(--secondary-color));
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 8px 24px rgba(52, 199, 89, 0.3);
+    }
+
+    .add-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    .add-modal-footer {
+      display: flex;
+      gap: 16px;
+      padding: 24px 32px 32px 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Estilos para el modal de edición elegante */
+    .edit-zone-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10003;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+
+    .edit-zone-modal.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .edit-modal-content {
+      background: var(--liquid-glass-bg);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid var(--liquid-glass-border);
+      border-radius: 32px;
+      width: 95%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+      transform: scale(0.9) translateY(40px);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .edit-zone-modal.show .edit-modal-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .edit-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 32px 32px 0 32px;
+      position: relative;
+    }
+
+    .header-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3);
+    }
+
+    .header-text h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 4px 0;
+    }
+
+    .header-text p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .close-btn.elegant {
+      position: absolute;
+      top: 0;
+      right: 32px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .close-btn.elegant:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      transform: scale(1.1);
+    }
+
+    .edit-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .form-section {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .form-section h4 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .form-group.full-width {
+      grid-column: span 2;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .elegant-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .elegant-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    .elegant-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .elegant-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    .range-input-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .elegant-range {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .elegant-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+
+    .range-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      min-width: 50px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .toggle-group {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .toggle-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .toggle-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .toggle-desc {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .elegant-toggle {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+    }
+
+    .elegant-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: 0.3s;
+      border-radius: 28px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .elegant-toggle input:checked + .toggle-slider {
+      background-color: var(--primary-color);
+    }
+
+    .elegant-toggle input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+
+    .preview-section {
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), rgba(90, 200, 250, 0.1));
+      border-color: rgba(0, 122, 255, 0.2);
+    }
+
+    .zone-preview {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .preview-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--primary-color);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    }
+
+    .preview-details h5 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 4px 0;
+    }
+
+    .preview-details p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0 0 8px 0;
+    }
+
+    .preview-status {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-tertiary);
+    }
+
+    .preview-status.active {
+      background: rgba(52, 199, 89, 0.2);
+      color: var(--success-color);
+    }
+
+    .edit-modal-footer {
+      display: flex;
+      gap: 16px;
+      padding: 24px 32px 32px 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-secondary.elegant,
+    .btn-primary.elegant {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .btn-secondary.elegant {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary.elegant:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary.elegant {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3);
+    }
+
+    .btn-primary.elegant:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 122, 255, 0.4);
+    }
+
+    .btn-primary.elegant:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .edit-modal-content {
+        width: 95%;
+        max-height: 95vh;
+        border-radius: 24px;
+      }
+
+      .edit-modal-header,
+      .edit-modal-body,
+      .edit-modal-footer {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full-width {
+        grid-column: span 1;
+      }
+
+      .edit-modal-footer {
+        flex-direction: column;
+      }
+    }
   `],
   standalone: true,
   imports: [CommonModule, FormsModule]
@@ -571,7 +1273,9 @@ export class SafeZonesComponent implements OnInit {
   @Output() toggleSafeZoneMap = new EventEmitter<boolean>();
   
   showAddZoneModal = false;
+  showEditZoneModal = false;
   showingZoneOnMap = false;
+  editingZone: SafeZone | null = null;
   
   safeZones: SafeZone[] = [
     {
@@ -636,7 +1340,35 @@ export class SafeZonesComponent implements OnInit {
 
   editZone(zone: SafeZone) {
     console.log('Editando zona:', zone.name);
-    // Aquí implementarías la lógica de edición
+    this.editingZone = { ...zone }; // Crear una copia para editar
+    this.showEditZoneModal = true;
+  }
+
+  closeEditModal() {
+    this.showEditZoneModal = false;
+    this.editingZone = null;
+  }
+
+  saveEditedZone() {
+    if (this.editingZone && this.editingZone.name) {
+      // Encontrar y actualizar la zona en la lista
+      const index = this.safeZones.findIndex(z => z.id === this.editingZone!.id);
+      if (index !== -1) {
+        this.safeZones[index] = { ...this.editingZone };
+        console.log('Zona actualizada:', this.editingZone.name);
+      }
+      this.closeEditModal();
+    }
+  }
+
+  getZoneTypeText(type: string): string {
+    switch (type) {
+      case 'home': return 'Casa';
+      case 'park': return 'Parque';
+      case 'work': return 'Trabajo';
+      case 'custom': return 'Personalizada';
+      default: return 'Zona';
+    }
   }
 
   deleteZone(zone: SafeZone) {

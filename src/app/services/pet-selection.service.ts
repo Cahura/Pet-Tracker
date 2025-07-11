@@ -13,6 +13,7 @@ export interface PetData {
   icon: string; // FontAwesome icon class
   color: string; // Primary color for the pet
   gradient: string; // Gradient for avatar background
+  activityState?: 'lying' | 'standing' | 'walking' | 'running' | 'disconnected'; // Estado fijo para mascotas demo
 }
 
 @Injectable({
@@ -22,7 +23,7 @@ export class PetSelectionService {
   private selectedPetSubject = new BehaviorSubject<PetData | null>(null);
   public selectedPet$ = this.selectedPetSubject.asObservable();
 
-  // Lista de mascotas demo
+  // Lista de mascotas demo - Ubicaciones en Lima, Perú
   private demoAnimals: PetData[] = [
     { 
       id: 1, 
@@ -31,11 +32,12 @@ export class PetSelectionService {
       breed: 'Golden Retriever', 
       status: 'online', 
       battery: 78, 
-      location: 'Parque Central, Madrid', 
-      coordinates: [-3.7038, 40.4168],
+      location: 'Miraflores, Lima', 
+      coordinates: [-77.0282, -12.1211], // Miraflores
       icon: 'fas fa-dog',
       color: '#FF6B35',
-      gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)'
+      gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
+      activityState: 'standing' // Max recibe datos reales del ESP32
     },
     { 
       id: 2, 
@@ -44,11 +46,12 @@ export class PetSelectionService {
       breed: 'Siamés', 
       status: 'online', 
       battery: 65, 
-      location: 'Plaza Mayor, Madrid', 
-      coordinates: [-3.7073, 40.4155],
+      location: 'San Isidro, Lima', 
+      coordinates: [-77.0365, -12.1005], // San Isidro
       icon: 'fas fa-cat',
       color: '#9B59B6',
-      gradient: 'linear-gradient(135deg, #9B59B6, #8E44AD)'
+      gradient: 'linear-gradient(135deg, #9B59B6, #8E44AD)',
+      activityState: 'lying' // Estado fijo: echada - EJEMPLO DESCANSANDO
     },
     { 
       id: 3, 
@@ -57,11 +60,12 @@ export class PetSelectionService {
       breed: 'Pastor Alemán', 
       status: 'offline', 
       battery: 23, 
-      location: 'Retiro, Madrid', 
-      coordinates: [-3.6844, 40.4153],
+      location: 'Barranco, Lima', 
+      coordinates: [-77.0176, -12.1462], // Barranco
       icon: 'fas fa-dog',
       color: '#3498DB',
-      gradient: 'linear-gradient(135deg, #3498DB, #2980B9)'
+      gradient: 'linear-gradient(135deg, #3498DB, #2980B9)',
+      activityState: 'disconnected' // Estado fijo: desconectado - EJEMPLO OFFLINE
     },
     { 
       id: 4, 
@@ -70,11 +74,12 @@ export class PetSelectionService {
       breed: 'Persa', 
       status: 'online', 
       battery: 89, 
-      location: 'Malasaña, Madrid', 
-      coordinates: [-3.7025, 40.4265],
+      location: 'Surco, Lima', 
+      coordinates: [-76.9931, -12.1340], // Surco
       icon: 'fas fa-cat',
       color: '#E74C3C',
-      gradient: 'linear-gradient(135deg, #E74C3C, #C0392B)'
+      gradient: 'linear-gradient(135deg, #E74C3C, #C0392B)',
+      activityState: 'standing' // Estado fijo: parada
     }
   ];
 

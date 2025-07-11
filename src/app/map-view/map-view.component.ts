@@ -8,6 +8,7 @@ import { SafeZonesComponent } from '../components/safe-zones.component';
 import { PetHistoryComponent } from '../components/pet-history.component';
 import { PetPhotosComponent } from '../components/pet-photos.component';
 import { PetAlertsComponent } from '../components/pet-alerts.component';
+import { Notification, NotificationService } from '../notification/notification';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -80,16 +81,16 @@ import { Subscription } from 'rxjs';
           <!-- Contenido minimizado - solo iconos -->
           <div class="sheet-minimized" [class.hidden]="isSheetExpanded">
             <div class="mini-actions">
-              <button class="mini-action-btn" (click)="onQuickAction('history'); $event.stopPropagation()">
+              <button class="mini-action-btn" [class.active]="showHistoryOnMapActive" (click)="onQuickAction('history'); $event.stopPropagation()">
                 <i class="fas fa-route"></i>
               </button>
-              <button class="mini-action-btn" (click)="onQuickAction('alerts'); $event.stopPropagation()">
+              <button class="mini-action-btn" [class.active]="showAlertsOnMapActive" (click)="onQuickAction('alerts'); $event.stopPropagation()">
                 <i class="fas fa-bell"></i>
               </button>
-              <button class="mini-action-btn" (click)="onQuickAction('safezones'); $event.stopPropagation()">
+              <button class="mini-action-btn" [class.active]="showSafeZoneOnMap" (click)="onQuickAction('safezones'); $event.stopPropagation()">
                 <i class="fas fa-shield-alt"></i>
               </button>
-              <button class="mini-action-btn" (click)="onQuickAction('camera'); $event.stopPropagation()">
+              <button class="mini-action-btn" [class.active]="showPhotosOnMapActive" (click)="onQuickAction('camera'); $event.stopPropagation()">
                 <i class="fas fa-camera"></i>
               </button>
             </div>
@@ -108,7 +109,10 @@ import { Subscription } from 'rxjs';
                 <div class="pet-stats">
                   <div class="stat">
                     <i class="fas fa-signal"></i>
-                    <span>{{ currentAnimal.status === 'online' ? 'Conectado' : 'Desconectado' }}</span>
+                    <div class="status-indicator-inline">
+                      <div class="status-dot" [class]="currentAnimal.status"></div>
+                      <span>{{ currentAnimal.status === 'online' ? 'Conectado' : 'Desconectado' }}</span>
+                    </div>
                   </div>
                   <div class="stat">
                     <i class="fas fa-battery-three-quarters"></i>
@@ -122,19 +126,19 @@ import { Subscription } from 'rxjs';
               <p class="location-address">{{ currentAnimal.location }}</p>
               <p class="location-time">Hace 2 minutos</p>
             </div>          <div class="quick-actions">
-            <button class="action-btn" (click)="onQuickAction('history'); $event.stopPropagation()">
+            <button class="action-btn" [class.active]="showHistoryOnMapActive" (click)="onQuickAction('history'); $event.stopPropagation()">
               <i class="fas fa-route"></i>
               <span>Historial</span>
             </button>
-            <button class="action-btn" (click)="onQuickAction('alerts'); $event.stopPropagation()">
+            <button class="action-btn" [class.active]="showAlertsOnMapActive" (click)="onQuickAction('alerts'); $event.stopPropagation()">
               <i class="fas fa-bell"></i>
               <span>Alertas</span>
             </button>
-            <button class="action-btn" (click)="onQuickAction('safezones'); $event.stopPropagation()">
+            <button class="action-btn" [class.active]="showSafeZoneOnMap" (click)="onQuickAction('safezones'); $event.stopPropagation()">
               <i class="fas fa-shield-alt"></i>
               <span>Zonas</span>
             </button>
-            <button class="action-btn" (click)="onQuickAction('camera'); $event.stopPropagation()">
+            <button class="action-btn" [class.active]="showPhotosOnMapActive" (click)="onQuickAction('camera'); $event.stopPropagation()">
               <i class="fas fa-camera"></i>
               <span>Fotos</span>
             </button>
@@ -160,7 +164,6 @@ import { Subscription } from 'rxjs';
                      [class.active]="animal.id === currentAnimal.id"
                      (click)="selectAnimal(animal)">
                   <div class="animal-avatar" [style.background]="animal.gradient">
-                    <div class="animal-status" [class]="animal.status"></div>
                     <i [class]="animal.icon" style="color: white; font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));"></i>
                   </div>
                   <div class="animal-info">
@@ -281,10 +284,13 @@ import { Subscription } from 'rxjs';
         </div>
       </div>
     </div>
+
+    <!-- Notifications System -->
+    <app-notification></app-notification>
   `,
   styleUrls: ['../app.scss'],
   standalone: true,
-  imports: [CommonModule, MapSimpleComponent, SafeZonesComponent, PetHistoryComponent, PetPhotosComponent, PetAlertsComponent]
+  imports: [CommonModule, MapSimpleComponent, SafeZonesComponent, PetHistoryComponent, PetPhotosComponent, PetAlertsComponent, Notification]
 })
 export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('mapComponent') mapComponent!: MapSimpleComponent;
@@ -297,6 +303,9 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   showAlertsModal = false;
   showLogoutConfirm = false; // Modal de confirmación de logout
   showSafeZoneOnMap = false;
+  showHistoryOnMapActive = false; // Nuevo estado para el historial
+  showAlertsOnMapActive = false; // Estado para alertas en mapa
+  showPhotosOnMapActive = false; // Estado para fotos en mapa
   private petSelectionSubscription?: Subscription;
 
   // Lista de mascotas demo - ahora viene del servicio
@@ -306,7 +315,8 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   constructor(
     private petSelectionService: PetSelectionService,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private notificationService: NotificationService
   ) {
     // Inicializar con la mascota seleccionada o la por defecto
     this.demoAnimals = this.petSelectionService.getDemoAnimals();
@@ -349,10 +359,58 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
         this.mapComponent.initializeWithAnimal(this.currentAnimal);
       }
     }, 100);
+
+    // Mostrar notificaciones de bienvenida después de que la vista esté ready
+    setTimeout(() => {
+      // Desactivado para producción - solo alertas importantes
+      // this.notificationService.showWelcomeNotifications(this.currentAnimal.name);
+      
+      // Solo mostrar alertas importantes de la mascota
+      setTimeout(() => {
+        this.notificationService.showPetAlert(
+          this.currentAnimal.name,
+          'Sistema de seguimiento activo'
+        );
+      }, 8000);
+    }, 1500);
   }
 
   onLocationClick() {
-    console.log('Location clicked');
+    console.log('Getting user location...');
+    
+    if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLocation: [number, number] = [
+          position.coords.longitude,
+          position.coords.latitude
+        ];
+        
+        console.log('User location found:', userLocation);
+        
+        if (this.mapComponent) {
+          // Agregar marcador de usuario y centrar el mapa
+          this.mapComponent.showUserLocation(userLocation);
+        }
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        // Fallback a ubicación por defecto (Lima centro)
+        const defaultLocation: [number, number] = [-77.0428, -12.0464];
+        if (this.mapComponent) {
+          this.mapComponent.showUserLocation(defaultLocation);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   }
 
   onZoomIn() {
@@ -383,19 +441,50 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   onQuickAction(action: string) {
     console.log('Quick action:', action);
     
+    // Implementar toggle functionality para todos los botones
     switch (action) {
       case 'history':
+        // Toggle historial (ya implementado)
         this.showHistoryOnMap();
         break;
       case 'alerts':
-        this.showAlertsModal = true;
+        // Toggle alertas
+        this.toggleAlertsOnMap();
         break;
       case 'safezones':
-        this.showSafeZonesModal = true;
+        // Toggle zonas seguras
+        this.toggleSafeZoneOnMap();
         break;
       case 'camera':
-        this.showPhotosModal = true;
+        // Toggle fotos
+        this.togglePhotosOnMap();
         break;
+    }
+  }
+
+  private closeAllModals() {
+    this.showAlertsModal = false;
+    this.showSafeZonesModal = false;
+    this.showPhotosModal = false;
+    
+    // También resetear cualquier vista del mapa
+    if (this.showHistoryOnMapActive && this.mapComponent) {
+      this.showHistoryOnMapActive = false;
+      this.mapComponent.hidePetHistory();
+    }
+    
+    // Reset estados de botones (pero no afectar el mapa para safe zones)
+    if (this.showAlertsOnMapActive) {
+      this.showAlertsOnMapActive = false;
+    }
+
+    if (this.showPhotosOnMapActive) {
+      this.showPhotosOnMapActive = false;
+    }
+
+    if (this.showSafeZoneOnMap) {
+      this.showSafeZoneOnMap = false;
+      // No llamar hideSafeZone aquí ya que las zonas seguras son modales, no elementos del mapa
     }
   }
 
@@ -431,38 +520,87 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
 
   closeSafeZonesModal() {
     this.showSafeZonesModal = false;
+    this.showSafeZoneOnMap = false; // Sincronizar el estado del botón
+  }
+
+  closeAlertsModal() {
+    this.showAlertsModal = false;
+    this.showAlertsOnMapActive = false; // Sincronizar el estado del botón
+  }
+
+  closePhotosModal() {
+    this.showPhotosModal = false;
+    this.showPhotosOnMapActive = false; // Sincronizar el estado del botón
   }
 
   closeHistoryModal() {
     this.showHistoryModal = false;
   }
 
-  closePhotosModal() {
-    this.showPhotosModal = false;
-  }
-
-  closeAlertsModal() {
-    this.showAlertsModal = false;
-  }
-
   showHistoryOnMap() {
-    // Mostrar la ruta de la mascota en el mapa
-    console.log('Showing history on map for:', this.currentAnimal.name);
+    // Toggle del historial en el mapa
+    this.showHistoryOnMapActive = !this.showHistoryOnMapActive;
+    console.log('Toggle history on map for:', this.currentAnimal.name, 'Active:', this.showHistoryOnMapActive);
+    
     if (this.mapComponent) {
-      this.mapComponent.showPetHistory(this.currentAnimal);
+      if (this.showHistoryOnMapActive) {
+        this.mapComponent.showPetHistory(this.currentAnimal);
+      } else {
+        this.mapComponent.hidePetHistory();
+      }
     }
   }
 
   toggleSafeZoneOnMap() {
+    // Para zonas seguras, manejar como modal en lugar de mostrar en mapa
     this.showSafeZoneOnMap = !this.showSafeZoneOnMap;
-    console.log('Toggle safe zone on map:', this.showSafeZoneOnMap);
+    console.log('Toggle safe zone modal:', this.showSafeZoneOnMap);
     
-    if (this.mapComponent) {
-      if (this.showSafeZoneOnMap) {
-        this.mapComponent.showSafeZone(this.currentAnimal);
-      } else {
-        this.mapComponent.hideSafeZone();
-      }
+    if (this.showSafeZoneOnMap) {
+      // Mostrar modal de zonas seguras
+      this.showSafeZonesModal = true;
+      // Mostrar notificación específica para zonas seguras
+      this.notificationService.showPetAlert(
+        this.currentAnimal.name, 
+        'Configurando zonas seguras para protección'
+      );
+    } else {
+      // Cerrar modal de zonas seguras
+      this.showSafeZonesModal = false;
+    }
+  }
+
+  toggleAlertsOnMap() {
+    this.showAlertsOnMapActive = !this.showAlertsOnMapActive;
+    console.log('Toggle alerts on map:', this.showAlertsOnMapActive);
+    
+    if (this.showAlertsOnMapActive) {
+      // Mostrar modal de alertas en lugar de mostrar en mapa
+      this.showAlertsModal = true;
+      this.notificationService.showPetAlert(
+        this.currentAnimal.name, 
+        'Revisando alertas y notificaciones importantes'
+      );
+    } else {
+      // Cerrar modal de alertas
+      this.showAlertsModal = false;
+    }
+  }
+
+  togglePhotosOnMap() {
+    this.showPhotosOnMapActive = !this.showPhotosOnMapActive;
+    console.log('Toggle photos on map:', this.showPhotosOnMapActive);
+    
+    if (this.showPhotosOnMapActive) {
+      // Mostrar modal de fotos en lugar de mostrar en mapa
+      this.showPhotosModal = true;
+      this.notificationService.showPetAlert(
+        this.currentAnimal.name, 
+        'Cargando galería de fotos recientes'
+      );
+    } else {
+      // Cerrar modal de fotos
+      this.showPhotosModal = false;
     }
   }
 

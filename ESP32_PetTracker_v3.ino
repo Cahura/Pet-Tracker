@@ -394,7 +394,7 @@ void updateSystemStatus() {
     // Simular descarga de batería realista
     static unsigned long lastBatteryUpdate = 0;
     if (millis() - lastBatteryUpdate > 60000) { // Cada minuto
-        int drain = random(0, 2); // 0-1% por minuto
+        int drain = (int)random(0, 2); // 0-1% por minuto - conversión explícita
         systemStatus.batteryLevel = max(0, systemStatus.batteryLevel - drain);
         lastBatteryUpdate = millis();
     }

@@ -235,7 +235,8 @@ void updateSystem() {
     // Batería
     static unsigned long lastBat = 0;
     if (millis() - lastBat > 60000) {
-        sys.battery = max(0, sys.battery - random(0, 2));
+        int drain = (int)random(0, 2); // Conversión explícita de long a int
+        sys.battery = max(0, sys.battery - drain);
         lastBat = millis();
     }
     

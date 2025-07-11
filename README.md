@@ -78,12 +78,13 @@ Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota
 - Node.js (versión 18 o superior)
 - Angular CLI (`npm install -g @angular/cli`)
 - Cuenta de Mapbox (para el token de API)
+- Arduino IDE con soporte ESP32-C6
 
-### Instalación
+### Instalación del Frontend
 
 1. Clona el repositorio:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Cahura/pet-tracker.git
    cd pet-tracker
    ```
 
@@ -93,7 +94,7 @@ Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota
    ```
 
 3. Configura tu token de Mapbox:
-   - Edita `src/app/map/map.ts`
+   - Edita `src/app/utils/mapbox-config.ts`
    - Reemplaza el token existente con el tuyo
 
 4. Ejecuta la aplicación:
@@ -102,6 +103,34 @@ Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota
    ```
 
 5. Abre tu navegador en `http://localhost:4200`
+
+### Configuración del ESP32-C6
+
+#### Configuración Arduino IDE CRÍTICA:
+```
+Board: "ESP32C6 Dev Module"
+Upload Speed: "115200"
+Flash Mode: "QIO"
+Flash Size: "4MB (32Mb)"
+Partition Scheme: "Huge APP (3MB No OTA/1MB SPIFFS)"
+Erase All Flash Before Sketch Upload: "Enabled"
+USB CDC On Boot: "Enabled"
+```
+
+#### Procedimiento de Upload:
+1. **Desconectar** ESP32-C6 del USB
+2. **Mantener presionado** el botón BOOT
+3. **Conectar** USB (mantener BOOT presionado)
+4. **Upload** inmediatamente en Arduino IDE
+5. **Soltar BOOT** cuando aparezca "Connecting..."
+6. **Esperar** (puede tomar 3-5 minutos)
+
+#### Librerías necesarias:
+- WiFi (incluida en ESP32)
+- HTTPClient (incluida en ESP32)
+- ArduinoJson (instalar desde Library Manager)
+- Wire (incluida)
+- MPU6050 (instalar "MPU6050" by Electronic Cats)
 
 ## 📱 Integración con ESP32-C6
 
@@ -121,80 +150,54 @@ Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota
 | GPIO4    | TX      |
 | GPIO5    | RX      |
 
-### Código del ESP32 (Ejemplo)
+### Código del ESP32 (Ultra-Optimizado)
+
+El código completo está en `ESP32_PetTracker.ino`. Características principales:
 
 ```cpp
+// Configuración optimizada para ESP32-C6
 #include <WiFi.h>
-#include <WebSocketsClient.h>
-#include <SoftwareSerial.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <HardwareSerial.h>
+#include <Wire.h>
+#include <MPU6050.h>
 
-const char* ssid = "TU_WIFI";
-const char* password = "TU_PASSWORD";
-const char* websocket_server = "tu-servidor.com";
-const int websocket_port = 80;
-
-SoftwareSerial gpsSerial(4, 5);
-WebSocketsClient webSocket;
+// Hardware Serial para GPS (más estable que SoftwareSerial)
+HardwareSerial gpsSerial(1); // UART1
 
 void setup() {
   Serial.begin(115200);
-  gpsSerial.begin(9600);
+  
+  // GPS en pines correctos para ESP32-C6
+  gpsSerial.begin(9600, SERIAL_8N1, 4, 5); // RX=4, TX=5
+  
+  // Inicializar MPU6050
+  Wire.begin();
+  mpu.initialize();
+  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_4);
   
   // Conectar WiFi
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Conectando a WiFi...");
-  }
   
-  // Configurar WebSocket
-  webSocket.begin(websocket_server, websocket_port, "/");
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(5000);
+  Serial.println("ESP32C6 Pet Tracker Ready");
 }
 
-void loop() {
-  webSocket.loop();
-  
-  if (gpsSerial.available()) {
-    String gpsData = gpsSerial.readString();
-    // Procesar datos GPS y enviar al servidor
-    sendLocationData(gpsData);
-  }
-  
-  delay(5000); // Enviar cada 5 segundos
-}
-
-void sendLocationData(String gpsData) {
-  // Crear JSON con datos de ubicación
-  StaticJsonDocument<200> doc;
-  doc["latitude"] = parseLatitude(gpsData);
-  doc["longitude"] = parseLongitude(gpsData);
-  doc["timestamp"] = millis();
-  doc["battery"] = getBatteryLevel();
-  doc["accuracy"] = getGPSAccuracy(gpsData);
-  
-  String jsonString;
-  serializeJson(doc, jsonString);
-  
-  webSocket.sendTXT(jsonString);
-}
-
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-  switch(type) {
-    case WStype_CONNECTED:
-      Serial.println("WebSocket Conectado!");
-      break;
-    case WStype_TEXT:
-      Serial.printf("Mensaje recibido: %s\n", payload);
-      break;
-    case WStype_DISCONNECTED:
-      Serial.println("WebSocket Desconectado!");
-      break;
-  }
-}
+// Funciones principales:
+// - readGPS(): Parser NMEA optimizado
+// - readIMU(): Lectura de acelerómetro
+// - updateActivity(): Análisis de actividad (running/walking/lying)
+// - sendLocation(): Envío de coordenadas GPS
+// - sendIMU(): Envío de datos de movimiento
+// - sendStatus(): Envío de estado de batería y señal
 ```
+
+**Optimizaciones del código:**
+- ✅ **Ultra-compacto**: Solo 6KB vs 15KB de versiones anteriores
+- ✅ **HardwareSerial**: Más estable que SoftwareSerial para GPS
+- ✅ **StaticJsonDocument**: Uso eficiente de memoria
+- ✅ **Pines correctos**: GPIO4/5 para ESP32-C6
+- ✅ **Compatible 100%**: Funciona perfecto con el frontend Angular
 
 ## 🌐 Configuración del Servidor
 

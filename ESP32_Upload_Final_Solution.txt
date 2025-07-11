@@ -1,0 +1,52 @@
+🚨 CONFIGURACIÓN OBLIGATORIA PARA ESP32-C6
+========================================
+
+⭐ SETTINGS CRÍTICOS:
+--------------------
+Board: "ESP32C6 Dev Module"
+Upload Speed: "115200" (NO 460800)
+Flash Mode: "QIO"
+Flash Size: "4MB (32Mb)" 
+Partition Scheme: "Huge APP (3MB No OTA/1MB SPIFFS)" ⚠️ CRÍTICO
+Core Debug Level: "None"
+Erase All Flash Before Sketch Upload: "Enabled" ⚠️ CRÍTICO
+USB CDC On Boot: "Enabled"
+
+🔧 PROCEDIMIENTO DE UPLOAD:
+---------------------------
+1. DESCONECTAR ESP32-C6 completamente
+2. MANTENER presionado botón BOOT
+3. CONECTAR USB (seguir manteniendo BOOT)
+4. Abrir Arduino IDE 
+5. Seleccionar puerto COM8
+6. UPLOAD inmediatamente
+7. Cuando aparezca "Connecting..." SOLTAR BOOT
+8. ESPERAR (puede tomar 3-5 minutos)
+
+📊 TAMAÑO ESTIMADO DEL CÓDIGO ULTRA:
+-----------------------------------
+Anterior: 1,145,355 bytes (87%)
+Ultra: ~600,000 bytes (~45%) ✅
+
+🎯 DIFERENCIAS DEL CÓDIGO ULTRA:
+-------------------------------
+✅ HardwareSerial en lugar de SoftwareSerial
+✅ StaticJsonDocument (tamaño fijo)
+✅ Variables char[] en lugar de String
+✅ float en lugar de double
+✅ Funciones combinadas y simplificadas
+✅ Timeouts reducidos (5s→3s)
+✅ Menos debug pero funcionalidad completa
+
+🔥 SI AÚN FALLA:
+----------------
+1. Cambiar Upload Speed a "9600"
+2. Usar cable USB diferente (DATOS, no solo carga)
+3. Probar puerto USB diferente del PC
+4. Reiniciar Arduino IDE completamente
+5. Reiniciar ESP32-C6 (botón RESET)
+
+⚡ PINES GPS CORREGIDOS:
+-----------------------
+ESP32-C6 UART1: RX=GPIO4, TX=GPIO5
+(Los pines 17,16 pueden causar conflictos en ESP32-C6)

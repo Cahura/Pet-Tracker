@@ -2,23 +2,74 @@
 
 Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota en tiempo real usando ESP32-C6 y GPS NEO-6M.
 
-## 🌟 Características
+## 🌟 Características Principales
 
+### 🗺️ **Rastreo Inteligente**
 - **Seguimiento en tiempo real**: Visualiza la ubicación actual de tu mascota en un mapa interactivo
-- **Historial de rutas**: Ve el recorrido completo de tu mascota
-- **Información detallada**: Batería, señal, precisión GPS y más
-- **Diseño responsivo**: Perfecto para móviles y desktop
-- **Interfaz elegante**: Diseño moderno con animaciones suaves
-- **Notificaciones**: Alertas para eventos importantes
+- **Historial de rutas**: Ve el recorrido completo de tu mascota con timestamps
+- **Avatar de usuario**: Encuentra tu propia ubicación con animación elegante
+- **Popups informativos**: Información detallada con hover sobre mascotas
+
+### 🎛️ **Controles Avanzados**
+- **Toggle functionality**: Botones con estado activo/inactivo para todas las funciones
+- **Zonas seguras**: Configuración modal con diseño liquid glass
+- **Gestión de alertas**: Sistema completo de notificaciones
+- **Galería de fotos**: Visualización de imágenes de mascotas
+
+### 🎨 **Diseño Premium**
+- **Liquid Glass Design**: Efectos de cristal líquido inspirados en Apple
+- **Animaciones suaves**: Transiciones con cubic-bezier para sensación premium
+- **Responsive design**: Optimizado para móviles, tablets y desktop
+- **Dark theme**: Tema oscuro elegante con colores adaptativos
+
+### 📱 **Experiencia Móvil**
+- **Optimización táctil**: Targets de toque apropiados para dedos
+- **Safe areas**: Respeta las áreas seguras de iOS y Android
+- **Viewport adaptativo**: Se ajusta perfectamente a cualquier pantalla
+- **Notificaciones optimizadas**: Sistema de alertas no intrusivo
 
 ## 🚀 Tecnologías Utilizadas
 
-- **Angular 20**: Framework web moderno
-- **Mapbox GL JS**: Mapas interactivos de alta calidad
-- **TypeScript**: Desarrollo tipado y robusto
-- **SCSS**: Estilos avanzados y responsivos
-- **RxJS**: Programación reactiva
-- **Font Awesome**: Iconos profesionales
+- **Angular 18**: Framework web moderno con SSR y optimizaciones
+- **Mapbox GL JS**: Mapas interactivos de alta calidad con renderizado acelerado
+- **TypeScript**: Desarrollo tipado y robusto con latest features
+- **SCSS**: Estilos avanzados con variables CSS y responsive design
+- **RxJS**: Programación reactiva para tiempo real
+- **Font Awesome 6**: Iconos profesionales y modernos
+- **Pusher**: WebSockets para comunicación en tiempo real con ESP32
+
+## ✨ Nuevas Características (Latest Update)
+
+### 🎮 **Toggle Controls System**
+- Todos los botones (historial, alertas, zonas, fotos) tienen funcionalidad toggle
+- Estados visuales activos con indicadores luminosos
+- Sincronización perfecta entre botones y modales
+
+### 👤 **Enhanced User Location**
+- Avatar de persona con gradiente azul Apple-style
+- Animación "pop" con cubic-bezier premium
+- Pulso de ubicación con transparencias suaves
+- Auto-fade después de 8 segundos
+
+### 🛡️ **Advanced Safe Zones**
+- Modal interface con liquid glass design
+- Editor de zonas con preview en tiempo real
+- Controles de radio ajustables (50m - 500m)
+- Tipos de zona con emojis (🏠🌳💼📍)
+- Toggles para notificaciones activas
+
+### 🔔 **Smart Notifications**
+- Sistema filtrado para producción (solo alertas críticas)
+- Animaciones de entrada escalonadas
+- Liquid glass design con backdrop blur
+- Progress bars y auto-dismiss inteligente
+- Posicionamiento responsive
+
+### 🎨 **Visual Polish**
+- Eliminación de indicadores de estado redundantes
+- Popups informativos con hover interactions
+- Optimizaciones de performance con hardware acceleration
+- Throttling de updates en tiempo real (1s location, 500ms IMU, 5s status)
 
 ## 🛠️ Instalación y Configuración
 

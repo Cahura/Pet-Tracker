@@ -606,15 +606,6 @@ img {
       font-weight: 600;
       margin-bottom: 2px;
     }
-    
-    .pet-status {
-      color: var(--text-secondary);
-      font-size: 11px;
-      
-      &.online {
-        color: var(--success-color);
-      }
-    }
   }
 }
 
@@ -954,26 +945,6 @@ img {
     font-size: 32px;
   }
   
-  .pet-status {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 3px solid white;
-    z-index: 10;
-    
-    &.online {
-      background: var(--success-color);
-      box-shadow: 0 0 12px rgba(52, 199, 89, 0.5);
-    }
-    
-    &.offline {
-      background: var(--text-tertiary);
-      box-shadow: 0 0 12px rgba(142, 142, 147, 0.5);
-    }
-  }
 }
 
 // Mobile responsive adjustments
@@ -985,12 +956,6 @@ img {
     
     .pet-avatar-fallback {
       font-size: 28px;
-    }
-    
-    .pet-status {
-      width: 18px;
-      height: 18px;
-      border-width: 2px;
     }
   }
   

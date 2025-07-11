@@ -59,7 +59,7 @@ export class RealTimeService {
 
   private initializePusher(): void {
     try {
-      console.log('Initializing Pusher with config:', environment.pusher);
+      console.log('Initializing Pusher for production with config:', environment.pusher);
       
       this.pusher = new Pusher(environment.pusher.key, {
         cluster: environment.pusher.cluster,
@@ -72,9 +72,9 @@ export class RealTimeService {
         authEndpoint: undefined // No necesitamos autenticación para canales públicos
       });
 
-      // Event listeners para la conexión
+      // Event listeners para la conexión optimizados para producción
       this.pusher.connection.bind('connected', () => {
-        console.log('Pusher connected successfully');
+        console.log('✅ Pusher connected - Ready for ESP32 data');
         this.isConnected = true;
         this.connectionSubject.next(true);
       });
@@ -104,27 +104,42 @@ export class RealTimeService {
       // Usar el APP_ID como nombre del canal
       this.channel = this.pusher.subscribe('pet-tracker');
 
-      // Escuchar eventos de ubicación GPS
+      // Throttle para eventos de ubicación (max 1 por segundo)
+      let lastLocationUpdate = 0;
       this.channel.bind('location-update', (data: PetLocationData) => {
-        console.log('Received location update:', data);
-        this.locationSubject.next(data);
+        const now = Date.now();
+        if (now - lastLocationUpdate > 1000) { // Max 1 actualización por segundo
+          console.log('Received location update:', data);
+          this.locationSubject.next(data);
+          lastLocationUpdate = now;
+        }
       });
 
-      // Escuchar eventos de datos IMU
+      // Throttle para eventos IMU (max 1 cada 500ms para fluidez)
+      let lastIMUUpdate = 0;
       this.channel.bind('imu-update', (data: PetIMUData) => {
-        console.log('Received IMU update:', data);
-        this.imuSubject.next(data);
+        const now = Date.now();
+        if (now - lastIMUUpdate > 500) { // Max 2 actualizaciones por segundo
+          console.log('Received IMU update:', data);
+          this.imuSubject.next(data);
+          lastIMUUpdate = now;
+        }
       });
 
-      // Escuchar eventos de estado del dispositivo
+      // Throttle para eventos de estado (max 1 cada 5 segundos)
+      let lastStatusUpdate = 0;
       this.channel.bind('status-update', (data: PetStatusData) => {
-        console.log('Received status update:', data);
-        this.statusSubject.next(data);
+        const now = Date.now();
+        if (now - lastStatusUpdate > 5000) { // Max 1 cada 5 segundos
+          console.log('Received status update:', data);
+          this.statusSubject.next(data);
+          lastStatusUpdate = now;
+        }
       });
 
       // Evento de conexión del canal
       this.channel.bind('pusher:subscription_succeeded', () => {
-        console.log('Successfully subscribed to pet-tracker channel');
+        console.log('Successfully subscribed to pet-tracker channel - Production ready');
       });
 
       this.channel.bind('pusher:subscription_error', (error: any) => {

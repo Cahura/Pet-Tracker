@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
+import { RealTimeService, PetLocationData, PetIMUData, PetStatusData } from '../services/realtime.service';
 
 @Component({
   selector: 'app-map-simple',
@@ -9,6 +11,43 @@ import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
       <div id="map-simple" class="mapbox-map"></div>
       <div *ngIf="isLoading" class="loading">Loading map...</div>
       <div *ngIf="error" class="error">Error: {{ error }}</div>
+      
+      <!-- Panel de información en tiempo real -->
+      <div class="realtime-panel" [class.connected]="isRealtimeConnected">
+        <div class="connection-status">
+          <i class="fas" [class]="isRealtimeConnected ? 'fa-wifi text-green' : 'fa-wifi-slash text-red'"></i>
+          <span>{{ isRealtimeConnected ? 'Conectado' : 'Desconectado' }}</span>
+        </div>
+        
+        <div *ngIf="lastLocationUpdate" class="data-panel">
+          <h4><i class="fas fa-map-marker-alt"></i> Ubicación</h4>
+          <p>Lat: {{ lastLocationUpdate.latitude.toFixed(6) }}</p>
+          <p>Lng: {{ lastLocationUpdate.longitude.toFixed(6) }}</p>
+          <p>Precisión: {{ lastLocationUpdate.accuracy?.toFixed(1) }}m</p>
+          <p class="timestamp">{{ formatTimestamp(lastLocationUpdate.timestamp) }}</p>
+        </div>
+
+        <div *ngIf="lastIMUUpdate" class="data-panel">
+          <h4><i class="fas fa-running"></i> Estado</h4>
+          <p class="activity-state" [class]="'state-' + lastIMUUpdate.activityState">
+            <i class="fas" [class]="getActivityIcon(lastIMUUpdate.activityState)"></i>
+            {{ getActivityText(lastIMUUpdate.activityState) }}
+          </p>
+          <p class="timestamp">{{ formatTimestamp(lastIMUUpdate.timestamp) }}</p>
+        </div>
+
+        <div *ngIf="lastStatusUpdate" class="data-panel">
+          <h4><i class="fas fa-info-circle"></i> Dispositivo</h4>
+          <p>Estado: <span [class]="'status-' + lastStatusUpdate.status">{{ lastStatusUpdate.status }}</span></p>
+          <p *ngIf="lastStatusUpdate.batteryLevel">Batería: {{ lastStatusUpdate.batteryLevel }}%</p>
+          <p *ngIf="lastStatusUpdate.signalStrength">Señal: {{ lastStatusUpdate.signalStrength }}%</p>
+        </div>
+        
+        <!-- Botón para simular datos en desarrollo -->
+        <button *ngIf="!isProduction" class="simulate-btn" (click)="simulateData()">
+          <i class="fas fa-play"></i> Simular Datos
+        </button>
+      </div>
     </div>
   `,
   styles: [`
@@ -31,6 +70,151 @@ import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
       padding: 20px;
       border-radius: 5px;
     }
+
+    /* Panel de datos en tiempo real */
+    .realtime-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 280px;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 16px;
+      color: white;
+      font-size: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .realtime-panel.connected {
+      border-color: rgba(52, 199, 89, 0.3);
+      box-shadow: 0 0 20px rgba(52, 199, 89, 0.2);
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .text-green { color: #34C759; }
+    .text-red { color: #FF3B30; }
+
+    .data-panel {
+      margin-bottom: 12px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid #34C759;
+    }
+
+    .data-panel h4 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #34C759;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .data-panel p {
+      margin: 4px 0;
+      font-size: 12px;
+    }
+
+    .timestamp {
+      color: #8E8E93;
+      font-size: 11px;
+      margin-top: 6px;
+    }
+
+    .activity-state {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+    }
+
+    .state-lying { color: #007AFF; }
+    .state-standing { color: #34C759; }
+    .state-walking { color: #FF9500; }
+    .state-running { color: #FF3B30; }
+
+    .status-online { color: #34C759; }
+    .status-offline { color: #8E8E93; }
+
+    .simulate-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, #007AFF, #5856D6);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .simulate-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    }
+
+    /* Estilos para estados del marcador */
+    .pet-marker.state-lying .pet-avatar {
+      animation: lying-pulse 2s ease-in-out infinite;
+    }
+
+    .pet-marker.state-standing .pet-avatar {
+      animation: standing-pulse 1.5s ease-in-out infinite;
+    }
+
+    .pet-marker.state-walking .pet-avatar {
+      animation: walking-bounce 1s ease-in-out infinite;
+    }
+
+    .pet-marker.state-running .pet-avatar {
+      animation: running-shake 0.5s ease-in-out infinite;
+    }
+
+    @keyframes lying-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+
+    @keyframes standing-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes walking-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes running-shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .realtime-panel {
+        width: calc(100% - 40px);
+        top: 10px;
+        right: 20px;
+        left: 20px;
+      }
+    }
   `],
   standalone: true,
   imports: [CommonModule]
@@ -40,23 +224,42 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private petMarker!: mapboxgl.Marker;
   private safeZoneCircle: mapboxgl.Marker | null = null;
   private historyPolyline: string | null = null;
+  private subscriptions: Subscription[] = [];
+  
   public isLoading = true;
   public error: string | null = null;
+  public isRealtimeConnected = false;
+  public isProduction = false;
+  
+  // Datos en tiempo real
+  public lastLocationUpdate: PetLocationData | null = null;
+  public lastIMUUpdate: PetIMUData | null = null;
+  public lastStatusUpdate: PetStatusData | null = null;
   
   // Pet location (Madrid center for demo)
   private petLocation: [number, number] = [-3.7038, 40.4168];
 
+  constructor(private realTimeService: RealTimeService) {}
+
   ngOnInit() {
+    this.isProduction = false; // Será reemplazado por environment.production
     this.initializeMap();
+    this.initializeRealTimeService();
   }
 
   ngOnDestroy() {
+    // Limpiar suscripciones
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    
     if (this.petMarker) {
       this.petMarker.remove();
     }
     if (this.map) {
       this.map.remove();
     }
+    
+    // Desconectar servicio en tiempo real
+    this.realTimeService.disconnect();
   }
 
   private async initializeMap() {
@@ -643,5 +846,155 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private getCurrentPetName(): string {
     // Obtener nombre de la mascota actual (puedes mejorarlo con un servicio)
     return 'Tu mascota';
+  }
+
+  // Métodos para el servicio en tiempo real
+  private initializeRealTimeService(): void {
+    // Suscribirse a los datos de conexión
+    const connectionSub = this.realTimeService.connection$.subscribe(connected => {
+      this.isRealtimeConnected = connected;
+      console.log('Conexión en tiempo real:', connected ? 'Conectada' : 'Desconectada');
+    });
+
+    // Suscribirse a los datos de ubicación
+    const locationSub = this.realTimeService.location$.subscribe(locationData => {
+      if (locationData) {
+        this.lastLocationUpdate = locationData;
+        this.updatePetLocation(locationData);
+      }
+    });
+
+    // Suscribirse a los datos IMU
+    const imuSub = this.realTimeService.imuData$.subscribe(imuData => {
+      if (imuData) {
+        this.lastIMUUpdate = imuData;
+        this.updatePetActivity(imuData);
+      }
+    });
+
+    // Suscribirse a los datos de estado
+    const statusSub = this.realTimeService.status$.subscribe(statusData => {
+      if (statusData) {
+        this.lastStatusUpdate = statusData;
+        this.updatePetStatus(statusData);
+      }
+    });
+
+    this.subscriptions.push(connectionSub, locationSub, imuSub, statusSub);
+  }
+
+  private updatePetLocation(locationData: PetLocationData): void {
+    const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
+    
+    console.log('Actualizando ubicación de mascota:', newCoordinates);
+    
+    // Actualizar ubicación interna
+    this.petLocation = newCoordinates;
+    
+    // Si existe el marcador, actualizar su posición
+    if (this.petMarker && this.map) {
+      // Animar la transición del marcador
+      this.petMarker.setLngLat(newCoordinates);
+      
+      // Opcional: centrar el mapa en la nueva ubicación
+      this.map.flyTo({
+        center: newCoordinates,
+        duration: 1500,
+        essential: true
+      });
+      
+      // Agregar animación de highlight
+      this.highlightPetMarker();
+    } else if (this.map) {
+      // Si no existe marcador, crear uno nuevo con los datos actuales
+      this.createRealtimePetMarker(locationData);
+    }
+  }
+
+  private updatePetActivity(imuData: PetIMUData): void {
+    console.log('Actualizando actividad de mascota:', imuData.activityState);
+    
+    // Actualizar el marcador con el nuevo estado de actividad
+    if (this.petMarker) {
+      const markerElement = this.petMarker.getElement();
+      
+      // Actualizar clases CSS según el estado
+      markerElement.classList.remove('state-lying', 'state-standing', 'state-walking', 'state-running');
+      markerElement.classList.add(`state-${imuData.activityState}`);
+      
+      // Actualizar el ícono del avatar según la actividad
+      const avatarIcon = markerElement.querySelector('.pet-avatar i');
+      if (avatarIcon) {
+        avatarIcon.className = `fas ${this.getActivityIcon(imuData.activityState)}`;
+      }
+    }
+  }
+
+  private updatePetStatus(statusData: PetStatusData): void {
+    console.log('Actualizando estado de mascota:', statusData.status);
+    
+    if (this.petMarker) {
+      const markerElement = this.petMarker.getElement();
+      const statusElement = markerElement.querySelector('.pet-status');
+      
+      if (statusElement) {
+        // Actualizar color del punto de estado
+        const bgColor = statusData.status === 'online' ? '#34C759' : '#8E8E93';
+        (statusElement as HTMLElement).style.backgroundColor = bgColor;
+        
+        // Agregar/quitar clases de estado
+        statusElement.classList.remove('status-online', 'status-offline');
+        statusElement.classList.add(`status-${statusData.status}`);
+      }
+    }
+  }
+
+  private createRealtimePetMarker(locationData: PetLocationData): void {
+    const animal = {
+      name: 'Mascota GPS',
+      type: 'dog',
+      icon: 'fas fa-dog',
+      gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
+      color: '#FF6B35',
+      status: this.lastStatusUpdate?.status || 'online',
+      coordinates: [locationData.longitude, locationData.latitude] as [number, number]
+    };
+    
+    this.addPetMarkerWithAnimal(animal);
+  }
+
+  // Métodos utilitarios para la UI
+  public formatTimestamp(timestamp: number): string {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+  }
+
+  public getActivityIcon(activityState: string): string {
+    switch (activityState) {
+      case 'lying': return 'fa-bed';
+      case 'standing': return 'fa-standing';
+      case 'walking': return 'fa-walking';
+      case 'running': return 'fa-running';
+      default: return 'fa-question';
+    }
+  }
+
+  public getActivityText(activityState: string): string {
+    switch (activityState) {
+      case 'lying': return 'Echado';
+      case 'standing': return 'Parado';
+      case 'walking': return 'Caminando';
+      case 'running': return 'Corriendo';
+      default: return 'Desconocido';
+    }
+  }
+
+  public simulateData(): void {
+    console.log('Simulando datos de prueba...');
+    this.realTimeService.simulateData();
   }
 }

@@ -41,7 +41,8 @@
               "node_modules/animate.css/animate.min.css"
             ],
             "allowedCommonJsDependencies": [
-              "mapbox-gl"
+              "mapbox-gl",
+              "pusher-js"
             ]
           },
           "configurations": {

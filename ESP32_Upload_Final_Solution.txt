@@ -48,5 +48,5 @@ Ultra: ~600,000 bytes (~45%) ✅
 
 ⚡ PINES GPS CORREGIDOS:
 -----------------------
-ESP32-C6 UART1: RX=GPIO4, TX=GPIO5
-(Los pines 17,16 pueden causar conflictos en ESP32-C6)
+ESP32-C6 UART1: RX=GPIO17, TX=GPIO16
+(Configuración específica para tu hardware)

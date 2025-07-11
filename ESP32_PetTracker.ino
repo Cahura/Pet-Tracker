@@ -15,7 +15,7 @@ const char* app_id = "2MkkLyzX";
 const char* key = "wigli6jxrshlpmocqtm9ywevffhq21e4";
 const char* channel = "pet-tracker";
 
-// Hardware - PINES CORREGIDOS PARA ESP32-C6
+// Hardware - PINES PARA TU ESP32-C6
 HardwareSerial gpsSerial(1); // Usar UART1
 MPU6050 mpu;
 
@@ -44,10 +44,10 @@ bool wifi = false;
 void setup() {
   Serial.begin(115200);
   
-  // GPS en pines correctos para ESP32-C6
-  gpsSerial.begin(9600, SERIAL_8N1, 4, 5); // RX=4, TX=5
+  // GPS en pines correctos para tu ESP32-C6
+  gpsSerial.begin(9600, SERIAL_8N1, 17, 16); // RX=17, TX=16
   
-  Serial.println("ESP32C6 Pet Tracker v2.2 - Ultra");
+  Serial.println("ESP32C6 Pet Tracker v2.3 - Ultra (RX=17, TX=16)");
   
   // IMU
   Wire.begin();
@@ -249,7 +249,9 @@ void sendIMU() {
 }
 
 void sendStat() {
-  bat = max(20, bat - random(0, 2));
+  // Fix del error de compilación: conversión explícita de tipos
+  int randomDrain = (int)random(0, 2);
+  bat = max(20, bat - randomDrain);
   
   StaticJsonDocument<160> doc;
   doc["event"] = "status-update";

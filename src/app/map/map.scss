@@ -1,0 +1,207 @@
+// Import Mapbox GL CSS
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: var(--bg-primary);
+}
+
+.mapbox-map {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background-color: #1a1a1a !important;
+  min-height: 100vh !important;
+}
+
+// Ensure map container and canvas fill the space
+#map {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+  position: relative;
+}
+
+// Force canvas to fill entire container
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+}
+
+.mapboxgl-canvas-container {
+  background-color: #1a1a1a !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+// Ensure mapbox map fills container
+.mapboxgl-map {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+}
+
+// Pet marker styles
+.pet-marker {
+  position: absolute;
+  z-index: 10;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  
+  .marker-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+  
+  .marker-info {
+    background: var(--blur-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-align: center;
+    min-width: 120px;
+    
+    .pet-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+    
+    .pet-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// Loading overlay
+.map-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  
+  .loading-spinner {
+    margin-bottom: 16px;
+    
+    i {
+      font-size: 32px;
+      color: var(--primary-color);
+    }
+  }
+  
+  p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+// Map attribution styling
+.mapboxgl-ctrl-attrib {
+  background: var(--bg-blur) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  
+  a {
+    color: var(--text-secondary) !important;
+    
+    &:hover {
+      color: var(--text-primary) !important;
+    }
+  }
+}
+
+// Compass control
+.mapboxgl-ctrl-compass {
+  background: var(--bg-secondary) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  
+  .mapboxgl-ctrl-icon {
+    background-image: none !important;
+    color: var(--text-primary) !important;
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    
+    &:before {
+      content: '\f14e'; // FontAwesome compass icon
+    }
+  }
+}
+
+// Mapbox dark theme overrides
+.mapboxgl-map {
+  background-color: #1a1a1a !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+}
+
+.mapboxgl-canvas-container {
+  background-color: #1a1a1a !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+// Force canvas to fill entire container
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+}
+
+.mapboxgl-ctrl-attrib {
+  background-color: rgba(42, 42, 42, 0.8) !important;
+  color: var(--text-secondary) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 6px;
+  
+  a {
+    color: var(--text-secondary) !important;
+    &:hover {
+      color: var(--text-primary) !important;
+    }
+  }
+}
+
+.mapboxgl-ctrl-logo {
+  opacity: 0.5 !important;
+  filter: invert(1) brightness(0.7);
+}
+
+// Hide Mapbox controls we don't want
+.mapboxgl-ctrl-top-right,
+.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo {
+  display: none !important;
+}

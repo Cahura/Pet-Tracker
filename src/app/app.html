@@ -1,0 +1,126 @@
+<div class="pet-tracker-app">
+  <!-- Header with liquid glass effect -->
+  <header class="app-header liquid-glass-strong animate-fade-in">
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <i class="fas fa-paw"></i>
+        </div>
+        <h1 class="app-title">PetTracker</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary location-btn" (click)="onLocationClick()">
+          <i class="fas fa-location-dot"></i>
+          <span>Mi Ubicación</span>
+        </button>
+        <button class="btn btn-primary settings-btn">
+          <i class="fas fa-gear"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content area -->
+  <main class="app-main">
+    <!-- Map container -->
+    <div class="map-container">
+      <app-map-simple></app-map-simple>
+      
+      <!-- Status island - moved to map area -->
+      <div class="status-island liquid-glass animate-fade-in">
+        <div class="status-content">
+          <div class="status-indicator">
+            <div class="indicator-dot animate-pulse"></div>
+            <span>En vivo</span>
+          </div>
+          <div class="last-update">
+            Hace 1 min
+          </div>
+        </div>
+      </div>
+      
+      <!-- Floating controls -->
+      <div class="map-controls">
+        <!-- Zoom controls -->
+        <div class="control-group">
+          <button class="control-btn" title="Zoom In" (click)="onZoomIn()">
+            <i class="fas fa-plus"></i>
+          </button>
+          <button class="control-btn" title="Zoom Out" (click)="onZoomOut()">
+            <i class="fas fa-minus"></i>
+          </button>
+        </div>
+        
+        <!-- Navigation controls -->
+        <div class="control-group">
+          <button class="control-btn" title="Centrar en la mascota" (click)="onCenterOnPet()">
+            <i class="fas fa-crosshairs"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Bottom sheet estilo isla Apple/Find My -->
+    <div class="pet-bottom-sheet liquid-glass-strong" [class.expanded]="isSheetExpanded" (click)="toggleSheet()">
+      <div class="sheet-handle"></div>
+      
+      <!-- Contenido minimizado - solo iconos -->
+      <div class="sheet-minimized" [class.hidden]="isSheetExpanded">
+        <div class="mini-actions">
+          <button class="mini-action-btn" (click)="onQuickAction('history'); $event.stopPropagation()">
+            <i class="fas fa-route"></i>
+          </button>
+          <button class="mini-action-btn" (click)="onQuickAction('alerts'); $event.stopPropagation()">
+            <i class="fas fa-bell"></i>
+          </button>
+          <button class="mini-action-btn" (click)="onQuickAction('camera'); $event.stopPropagation()">
+            <i class="fas fa-camera"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Contenido expandido -->
+      <div class="sheet-expanded" [class.hidden]="!isSheetExpanded">
+        <div class="pet-info-card">
+          <div class="pet-avatar">
+            <div class="pet-status online"></div>
+            <i class="fas fa-dog"></i>
+          </div>
+          <div class="pet-details">
+            <h3 class="pet-name">Max</h3>
+            <p class="pet-breed">Golden Retriever</p>
+            <div class="pet-stats">
+              <div class="stat">
+                <i class="fas fa-signal"></i>
+                <span>Conectado</span>
+              </div>
+              <div class="stat">
+                <i class="fas fa-battery-three-quarters"></i>
+                <span>78%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="location-info">
+          <h4>Última ubicación</h4>
+          <p class="location-address">Parque Central, Madrid</p>
+          <p class="location-time">Hace 2 minutos</p>
+        </div>
+        <div class="quick-actions">
+          <button class="action-btn" (click)="onQuickAction('history'); $event.stopPropagation()">
+            <i class="fas fa-route"></i>
+            <span>Historial</span>
+          </button>
+          <button class="action-btn" (click)="onQuickAction('alerts'); $event.stopPropagation()">
+            <i class="fas fa-bell"></i>
+            <span>Alertas</span>
+          </button>
+          <button class="action-btn" (click)="onQuickAction('camera'); $event.stopPropagation()">
+            <i class="fas fa-camera"></i>
+            <span>Fotos</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

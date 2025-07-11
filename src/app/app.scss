@@ -1,0 +1,2371 @@
+// Responsive breakpoints
+$mobile: 768px;    // Cambiar a 768px para que incluya tablets pequeñas
+$tablet: 1024px;   // Tablets y pantallas medianas
+$desktop: 1200px;  // Desktop real
+
+// Responsive mixins
+@mixin mobile {
+  @media (max-width: #{$mobile - 1px}) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: #{$mobile}) and (max-width: #{$tablet - 1px}) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: #{$desktop}) {
+    @content;
+  }
+}
+
+@mixin large-screen {
+  @media (min-width: 1400px) {
+    @content;
+  }
+}
+
+// Global responsive fixes
+.pet-tracker-app {
+  height: 100vh;
+  height: 100dvh; // Dynamic viewport height for mobile browsers
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+  position: relative;
+  
+  @include mobile {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+// Header styles - como isla flotante sobre el mapa (igual que otros elementos)
+.app-header {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--liquid-glass-bg);
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 28px;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  box-shadow: var(--liquid-glass-shadow);
+  transition: all var(--transition-normal);
+  // Liquid glass effect applied via class
+  
+  @include mobile {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    border-radius: 24px;
+  }
+  
+  &:hover {
+    background: var(--liquid-glass-hover);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+  
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    
+    // Mobile específico (hasta 767px)
+    @media (max-width: 767px) {
+      padding: 8px 16px;
+    }
+    
+    // Tablet específico (768px a 1023px)
+    @media (min-width: 768px) and (max-width: 1023px) {
+      padding: 10px 18px;
+    }
+    
+    // Desktop específico (1024px a 1199px)
+    @media (min-width: 1024px) and (max-width: 1199px) {
+      padding: 14px 32px;
+    }
+    
+    // Pantallas grandes (1200px en adelante)
+    @media (min-width: 1200px) {
+      padding: 16px 48px;
+    }
+    
+    // Extra grandes (1400px en adelante)
+    @media (min-width: 1400px) {
+      padding: 18px 64px;
+    }
+  }
+  
+  .logo-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    
+    @include mobile {
+      gap: 8px;
+    }
+    
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+      transition: all var(--transition-normal);
+      
+      // Mobile específico
+      @media (max-width: 767px) {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+      }
+      
+      // Desktop y pantallas grandes
+      @media (min-width: 1024px) {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+      }
+      
+      // Extra grandes
+      @media (min-width: 1400px) {
+        width: 46px;
+        height: 46px;
+        font-size: 20px;
+      }
+      
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+      }
+    }
+    
+    .app-title {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.5px;
+      
+      // Mobile específico
+      @media (max-width: 767px) {
+        font-size: 18px;
+        letter-spacing: -0.3px;
+      }
+      
+      // Desktop y pantallas grandes
+      @media (min-width: 1024px) {
+        font-size: 26px;
+        letter-spacing: -0.7px;
+      }
+      
+      // Extra grandes
+      @media (min-width: 1400px) {
+        font-size: 28px;
+        letter-spacing: -0.8px;
+      }
+    }
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    
+    @include mobile {
+      gap: 8px;
+    }
+    
+    .location-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+      
+      // Mobile específico
+      @media (max-width: 767px) {
+        padding: 4px 8px;
+        font-size: 11px;
+        gap: 4px;
+        
+        span {
+          display: none; // Ocultar texto en móvil
+        }
+      }
+      
+      // Desktop y pantallas grandes
+      @media (min-width: 1024px) {
+        padding: 8px 16px;
+        font-size: 14px;
+        gap: 8px;
+        border-radius: 24px;
+      }
+      
+      // Extra grandes
+      @media (min-width: 1400px) {
+        padding: 10px 20px;
+        font-size: 15px;
+        gap: 10px;
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+      }
+    }
+    
+    .settings-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      font-size: 16px;
+      transition: all var(--transition-fast);
+      
+      // Mobile específico
+      @media (max-width: 767px) {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+      }
+      
+      // Desktop y pantallas grandes
+      @media (min-width: 1024px) {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+      }
+      
+      // Extra grandes
+      @media (min-width: 1400px) {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: scale(1.05);
+      }
+    }
+  }
+}
+
+// Main content layout - ahora el mapa ocupa toda la pantalla con header superpuesto
+.app-main {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+// Map container with floating controls
+.map-container {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  
+  // Ensure app-map component takes full size
+  app-map {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  
+  .map-controls {
+    position: absolute;
+    top: 110px; // Más espacio para el header isla
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 999; // Menor que el header pero mayor que el mapa
+    align-items: center; // Centrar los controles
+    
+    @include mobile {
+      top: 100px; // Ajustado para móvil con header isla
+      right: 16px;
+      gap: 12px;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px; // Menor gap para mejor alineación
+      background: var(--liquid-glass-bg);
+      border-radius: 28px;
+      padding: 6px; // Padding más uniforme
+      backdrop-filter: blur(var(--liquid-glass-blur));
+      -webkit-backdrop-filter: blur(var(--liquid-glass-blur));
+      border: 1px solid var(--liquid-glass-border);
+      box-shadow: var(--liquid-glass-shadow);
+      transition: all var(--transition-normal);
+      
+      @include mobile {
+        border-radius: 24px;
+        padding: 4px;
+      }
+      
+      &:hover {
+        background: var(--liquid-glass-hover);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      }
+    }
+    
+    .control-btn {
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      border-radius: 50%;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 16px;
+      
+      @include mobile {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(1.1);
+      }
+      
+      &:active {
+        transform: scale(0.9);
+      }
+    }
+    
+    // Botón especial de centrado - mismo estilo que otros controles
+    .find-my-center-btn {
+      width: 56px;
+      height: 56px;
+      background: var(--liquid-glass-bg);
+      border: 1px solid var(--liquid-glass-border);
+      border-radius: 50%;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px; // Tamaño más apropiado
+      box-shadow: var(--liquid-glass-shadow);
+      transition: all var(--transition-normal);
+      backdrop-filter: blur(var(--liquid-glass-blur));
+      -webkit-backdrop-filter: blur(var(--liquid-glass-blur));
+      margin-top: 8px; // Separación del grupo de controles
+      
+      @include mobile {
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+        margin-top: 6px;
+      }
+      
+      &:hover {
+        background: var(--liquid-glass-hover);
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      
+      &:active {
+        transform: scale(0.95);
+      }
+      
+      i {
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+      }
+    }
+  }
+}
+
+// Bottom sheet estilo isla Apple/Find My - posicionamiento responsive mejorado
+.pet-bottom-sheet {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  transform: translateX(0) translateY(0);
+  width: 88vw;
+  max-width: 360px;
+  border-radius: 36px 36px 32px 32px;
+  padding: 8px 16px 12px 16px;
+  z-index: 2000;
+  transition: all 0.4s cubic-bezier(.25,1.46,.45,.94);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 50px;
+  max-height: 55vh;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+
+  // Responsive: mejor adaptación móvil
+  @include mobile {
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    width: 95vw;
+    max-width: 95vw;
+    border-radius: 32px 32px 24px 24px;
+    padding: 6px 12px 10px 12px;
+    min-height: 46px;
+    max-height: 60vh;
+  }
+
+  @include tablet {
+    left: 50%;
+    bottom: 15px;
+    transform: translateX(-50%);
+    width: 92vw;
+    max-width: 400px;
+  }
+
+  &.expanded {
+    min-height: 300px;
+    max-height: 85vh;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    padding-bottom: 28px;
+    overflow-y: auto;
+    cursor: grab;
+    border-radius: 36px 36px 16px 16px;
+    
+    @include mobile {
+      min-height: 250px;
+      max-height: 80vh;
+      border-radius: 32px 32px 12px 12px;
+      padding-bottom: 20px;
+    }
+  }
+
+  .sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 2px;
+    margin: 6px auto 8px auto;
+    opacity: 0.8;
+    transition: all var(--transition-fast);
+    
+    &:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  // Vista minimizada - solo iconos más elegantes
+  .sheet-minimized {
+    .mini-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 2px 12px;
+      
+      .mini-action-btn {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        border-radius: 50%;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        font-size: 15px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.15);
+          transform: scale(1.1);
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        &:active {
+          transform: scale(0.9);
+        }
+      }
+    }
+  }
+
+  // Vista expandida
+  .sheet-expanded {
+    gap: 16px;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+  
+  // Pet info card más refinado
+  .pet-info-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    
+    .pet-avatar {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      background: transparent;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      
+      .pet-avatar-img {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        object-position: center;
+        border-radius: 50%;
+        background: transparent;
+      }
+      
+      .pet-status {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 3px solid white;
+        
+        &.online { 
+          background: var(--success-color);
+          box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+        }
+        &.offline { 
+          background: var(--text-tertiary);
+        }
+      }
+    }
+    
+    .pet-details {
+      flex: 1;
+      
+      .pet-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+        letter-spacing: 0.3px;
+      }
+      
+      .pet-breed {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0 0 8px 0;
+        font-weight: 400;
+      }
+      
+      .pet-stats {
+        display: flex;
+        gap: 16px;
+        
+        .stat {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 500;
+          
+          i { 
+            color: var(--primary-color);
+            font-size: 13px;
+          }
+        }
+      }
+    }
+  }
+  
+  // Location info más refinado
+  .location-info {
+    margin-bottom: 16px;
+    background: transparent;
+    padding: 0;
+    
+    h4 {
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 6px 0;
+      letter-spacing: 0.2px;
+    }
+    
+    .location-address {
+      color: var(--text-primary);
+      font-size: 14px;
+      margin: 0 0 4px 0;
+      font-weight: 500;
+    }
+    
+    .location-time {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin: 0;
+      font-weight: 400;
+    }
+  }
+  
+  // Quick actions más elegantes
+  .quick-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    
+    .action-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 12px 8px;
+      font-size: 13px;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all var(--transition-fast);
+      cursor: pointer;
+      
+      i { 
+        font-size: 16px;
+        color: var(--primary-color);
+      }
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+}
+
+// Status Island - esquina superior izquierda, posicionada debajo del header isla
+.status-island {
+  position: absolute;
+  top: 110px; // Espacio para el header isla
+  left: 20px;
+  z-index: 999; // Menor que el header pero mayor que el mapa
+  padding: 10px 16px;
+  min-width: 110px;
+  pointer-events: auto;
+  border-radius: 24px; // Más circular como Find My
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  // Liquid glass effect applied via class
+
+  @include mobile {
+    top: 100px; // Ajustado para móvil con header isla
+    left: 16px;
+    padding: 8px 12px;
+    min-width: 100px;
+    border-radius: 20px;
+  }
+
+  .status-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    .indicator-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--success-color);
+      border-radius: 50%;
+      border: 1px solid rgba(52, 199, 89, 0.3);
+      box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+      animation: pulse-dot 2s infinite;
+      
+      @include mobile {
+        width: 6px;
+        height: 6px;
+      }
+    }
+    
+    span {
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      
+      @include mobile {
+        font-size: 11px;
+      }
+    }
+  }
+
+  .last-update {
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+    
+    @include mobile {
+      font-size: 9px;
+    }
+  }
+}
+
+// Animación para el punto de estado
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+// Responsive para móviles - centrado en móvil
+@media (max-width: 768px) {
+  .status-island {
+    top: 100px; // Ajustado para móvil con header isla
+    left: 16px;
+    padding: 8px 12px;
+    min-width: 100px;
+    border-radius: 20px;
+    
+    .status-indicator {
+      .indicator-dot {
+        width: 6px;
+        height: 6px;
+      }
+      
+      span {
+        font-size: 11px;
+      }
+    }
+    
+    .last-update {
+      font-size: 9px;
+    }
+  }
+  
+  .map-controls {
+    top: 100px; // Ajustado para móvil con header isla
+    right: 16px;
+    gap: 12px;
+    
+    .control-group {
+      border-radius: 24px;
+      padding: 4px;
+      
+      .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+      }
+    }
+    
+    .find-my-center-btn {
+      width: 50px;
+      height: 50px;
+      font-size: 16px;
+      background: var(--liquid-glass-bg);
+      border: 1px solid var(--liquid-glass-border);
+      color: var(--text-primary);
+      backdrop-filter: blur(var(--liquid-glass-blur));
+      -webkit-backdrop-filter: blur(var(--liquid-glass-blur));
+      
+      &:hover {
+        background: var(--liquid-glass-hover);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+  
+  // En móvil: centrado en la parte inferior
+  .pet-bottom-sheet {
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%) translateY(0);
+    width: 94vw;
+    max-width: 94vw;
+    border-radius: 32px 32px 24px 24px;
+    padding: 6px 12px 10px 12px;
+    min-height: 46px;
+    
+    .sheet-handle {
+      width: 36px;
+      height: 3px;
+      margin: 4px auto 6px auto;
+    }
+    
+    .sheet-minimized .mini-actions {
+      gap: 12px;
+      padding: 2px 8px;
+      
+      .mini-action-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// Settings Modal - glassmorphism elegante
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-normal);
+  pointer-events: none;
+  
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    
+    .settings-content {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .settings-content {
+    background: var(--glass-primary);
+    border: 1px solid var(--liquid-glass-border);
+    border-radius: 32px;
+    padding: 32px;
+    width: 90%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: all var(--transition-normal);
+    
+    // Personalizar el scroll bar para que respete las curvaturas del modal
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      margin: 50px 0; // Márgenes más grandes para respetar border-radius del modal
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      min-height: 30px; // Altura mínima para el thumb
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.35);
+        background-clip: padding-box;
+      }
+    }
+    
+    &::-webkit-scrollbar-thumb:active {
+      background: rgba(255, 255, 255, 0.45);
+      background-clip: padding-box;
+    }
+    
+    // Para Firefox
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.05);
+    
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      
+      h2 {
+        color: var(--text-primary);
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+      
+      .close-btn {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all var(--transition-fast);
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.15);
+          transform: scale(1.05);
+        }
+        
+        &:active {
+          transform: scale(0.95);
+        }
+      }
+    }
+    
+    .settings-section {
+      margin-bottom: 32px;
+      padding-right: 12px; // Espacio suficiente para el scroll bar estilo Apple
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      h3 {
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 16px 0;
+        letter-spacing: -0.3px;
+      }
+      
+      .animals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+        
+        .animal-card {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 16px;
+          text-align: center;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          
+          &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+          }
+          
+          &.active {
+            background: rgba(0, 122, 255, 0.2);
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3);
+          }
+          
+          .animal-avatar {
+            position: relative;
+            width: 60px; // Aumentado de 48px a 60px
+            height: 60px; // Aumentado de 48px a 60px
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            margin: 0 auto 12px auto;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.9); // Borde más grueso y visible
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            &::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+              border-radius: 50%;
+              z-index: 1;
+            }
+            
+            i {
+              font-size: 24px;
+              z-index: 2;
+              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+              transition: all 0.3s ease;
+            }
+            
+            .animal-status {
+              position: absolute;
+              top: -2px; // Posicionar encima del marco
+              right: -2px; // Posicionar encima del marco  
+              width: 18px; // Ligeramente más grande
+              height: 18px; // Ligeramente más grande
+              border-radius: 50%;
+              border: 3px solid white;
+              z-index: 3;
+              
+              &.online { 
+                background: var(--success-color);
+                box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+              }
+              &.offline { 
+                background: var(--text-tertiary);
+              }
+            }
+            
+            &:hover {
+              transform: scale(1.05);
+              box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
+              
+              i {
+                transform: scale(1.1);
+              }
+            }
+          }
+          
+          .animal-info {
+            h4 {
+              color: var(--text-primary);
+              font-size: 14px;
+              font-weight: 600;
+              margin: 0 0 4px 0;
+            }
+            
+            p {
+              color: var(--text-secondary);
+              font-size: 12px;
+              margin: 0 0 8px 0;
+              font-weight: 400;
+            }
+            
+            .battery {
+              color: var(--primary-color);
+              font-size: 11px;
+              font-weight: 500;
+              background: rgba(0, 122, 255, 0.15);
+              padding: 2px 6px;
+              border-radius: 8px;
+              border: 1px solid rgba(0, 122, 255, 0.2);
+            }
+          }
+        }
+      }
+      
+      .settings-options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        
+        .settings-option-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 20px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 16px;
+          color: var(--text-primary);
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all var(--transition-fast);
+          text-align: left;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          
+          &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          }
+          
+          &:active {
+            transform: translateY(0);
+          }
+          
+          &.logout-btn {
+            border-color: rgba(255, 59, 48, 0.3);
+            color: var(--error-color);
+            
+            &:hover {
+              background: rgba(255, 59, 48, 0.1);
+              border-color: rgba(255, 59, 48, 0.4);
+            }
+            
+            i {
+              color: var(--error-color);
+            }
+          }
+          
+          i {
+            color: var(--primary-color);
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive para móviles
+@media (max-width: 600px) {
+  .settings-modal {
+    .settings-content {
+      width: 95%;
+      padding: 24px;
+      border-radius: 28px;
+      max-height: 90vh;
+      
+      // Scroll bar más pequeño en móvil estilo Apple
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        margin: 40px 0; // Márgenes ajustados para móvil respetando border-radius
+        border-radius: 8px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.25);
+        min-height: 20px; // Altura mínima en móvil
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.35);
+        }
+      }
+      
+      .settings-header {
+        margin-bottom: 24px;
+        
+        h2 {
+          font-size: 20px;
+        }
+      }
+      
+      .settings-section {
+        margin-bottom: 24px;
+        padding-right: 10px; // Espacio proporcional para móvil
+        
+        h3 {
+          font-size: 16px;
+        }
+        
+        .animals-grid {
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 12px;
+          
+          .animal-card {
+            padding: 12px;
+            border-radius: 16px;
+            
+            .animal-avatar {
+              width: 52px; // Aumentado de 40px a 52px
+              height: 52px; // Aumentado de 40px a 52px
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              border: 2px solid rgba(255, 255, 255, 0.9); // Agregar borde
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); // Agregar sombra
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              
+              &::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+                border-radius: 50%;
+                z-index: 1;
+              }
+              
+              i {
+                font-size: 20px;
+                color: white;
+                z-index: 2;
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+              }
+              
+              .animal-status {
+                position: absolute;
+                top: -2px; // Posicionar encima del marco
+                right: -2px; // Posicionar encima del marco
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                border: 2px solid white;
+                z-index: 3;
+                
+                &.online { 
+                  background: var(--success-color);
+                  box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+                }
+                &.offline { 
+                  background: var(--text-tertiary);
+                }
+              }
+            }
+          }
+        }
+        
+        .settings-options {
+          gap: 8px;
+          
+          .settings-option-btn {
+            padding: 12px 16px;
+            font-size: 13px;
+            
+            i {
+              font-size: 14px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Feature Modals - para Zonas Seguras e Historial
+.feature-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10002;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-normal);
+  pointer-events: none;
+  
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    
+    .feature-modal-content {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .feature-modal-content {
+    background: var(--glass-primary);
+    border: 1px solid var(--liquid-glass-border);
+    border-radius: 32px;
+    width: 95%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow: hidden;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    
+    .feature-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+      
+      h2 {
+        color: var(--text-primary);
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+      
+      .close-btn {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all var(--transition-fast);
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.15);
+          transform: scale(1.05);
+        }
+        
+        &:active {
+          transform: scale(0.95);
+        }
+      }
+    }
+    
+    .feature-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      
+      // Scrollbar personalizado mejorado que respeta las curvas del modal
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        margin: 20px 0; // Margen reducido para que el scrollbar no toque los extremos
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        min-height: 30px;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.35);
+          background-clip: padding-box;
+        }
+      }
+      
+      &::-webkit-scrollbar-thumb:active {
+        background: rgba(255, 255, 255, 0.45);
+        background-clip: padding-box;
+      }
+      
+      // Firefox
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.05);
+    }
+  }
+}
+
+// Responsive para feature modals
+@media (max-width: 768px) {
+  .feature-modal {
+    .feature-modal-content {
+      width: 98%;
+      max-width: none;
+      max-height: 95vh;
+      border-radius: 24px;
+      margin: 10px;
+      
+      .feature-modal-header {
+        padding: 20px 24px;
+        
+        h2 {
+          font-size: 20px;
+        }
+        
+        .close-btn {
+          width: 36px;
+          height: 36px;
+          font-size: 14px;
+        }
+      }
+      
+      .feature-modal-body {
+        // Scrollbar más pequeño en móvil
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        &::-webkit-scrollbar-track {
+          margin: 15px 0;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          border-radius: 8px;
+          min-height: 20px;
+        }
+      }
+    }
+  }
+}
+
+// Animación para cambio de mascota
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pet-info-card {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.location-info {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+// Estilos para marcadores de historial
+.history-marker {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  
+  .history-dot {
+    width: 12px;
+    height: 12px;
+    background: #34C759;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.4);
+    margin: 6px;
+  }
+  
+  .history-time {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  &:hover .history-time {
+    opacity: 1;
+  }
+}
+
+// Estilos para zona segura
+.safe-zone-circle {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  pointer-events: none;
+  
+  .safe-zone-ring {
+    width: 300px;
+    height: 300px;
+    border: 3px solid #34C759;
+    border-radius: 50%;
+    background: rgba(52, 199, 89, 0.1);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse-safe-zone 2s infinite;
+  }
+  
+  .safe-zone-label {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(52, 199, 89, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+@keyframes pulse-safe-zone {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+// Estilos para alertas de zona segura
+.safe-zone-alert {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 59, 48, 0.95);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(255, 59, 48, 0.3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1000;
+  max-width: 300px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideInAlert 0.5s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  .alert-icon {
+    font-size: 20px;
+    color: #FFE5E5;
+    animation: pulse 1s infinite;
+  }
+  
+  .alert-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.4;
+    
+    strong {
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: block;
+    }
+  }
+}
+
+@keyframes slideInAlert {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+// Botón para mostrar/ocultar zona segura en el modal
+.safe-zone-map-toggle {
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #34C759, #30A14E);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(52, 199, 89, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &.active {
+    background: linear-gradient(135deg, #FF3B30, #DC2626);
+    
+    &:hover {
+      box-shadow: 0 8px 25px rgba(255, 59, 48, 0.3);
+    }
+  }
+}
+
+// Estilos para el modal de fotos
+.feature-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .feature-modal-content {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 800px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+  }
+  
+  &.show .feature-modal-content {
+    transform: scale(1);
+  }
+  
+  .feature-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: var(--text-primary);
+      }
+    }
+  }
+  
+  .feature-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    
+    // Scrollbar personalizado para el modal
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 0 16px 16px 0;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+      background-clip: padding-box;
+    }
+  }
+}
+
+// Modal de Confirmación de Logout - diseño liquid glass elegante
+.logout-confirm-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10005; // Más alto que otros modales
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-normal);
+  pointer-events: none;
+  
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    
+    .logout-confirm-content {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .logout-confirm-content {
+    background: var(--liquid-glass-bg);
+    border: 1px solid var(--liquid-glass-border);
+    border-radius: 32px;
+    padding: 32px;
+    width: 95%;
+    max-width: 420px;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: var(--liquid-glass-shadow);
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: all var(--transition-normal);
+    text-align: center;
+    
+    @include mobile {
+      padding: 24px;
+      border-radius: 28px;
+      max-width: 90%;
+    }
+    
+    .logout-confirm-header {
+      margin-bottom: 32px;
+      
+      .logout-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--error-color), #ff6b6b);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+        margin: 0 auto 20px auto;
+        box-shadow: 0 8px 24px rgba(255, 59, 48, 0.3);
+        animation: pulse-icon 2s infinite;
+        
+        @include mobile {
+          width: 56px;
+          height: 56px;
+          font-size: 20px;
+          margin-bottom: 16px;
+        }
+      }
+      
+      h3 {
+        color: var(--text-primary);
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+        letter-spacing: -0.5px;
+        
+        @include mobile {
+          font-size: 20px;
+        }
+      }
+      
+      p {
+        color: var(--text-secondary);
+        font-size: 16px;
+        margin: 0;
+        line-height: 1.5;
+        
+        @include mobile {
+          font-size: 14px;
+        }
+      }
+    }
+    
+    .logout-confirm-actions {
+      display: flex;
+      gap: 24px; /* Aumentado para mejor espaciado */
+      justify-content: center;
+      margin-top: 40px; /* MUCHO MÁS ESPACIO entre pregunta y botones */
+      
+      @include mobile {
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 32px; /* También en móvil */
+      }
+      
+      .logout-btn-cancel,
+      .logout-btn-confirm {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px; /* Aumentado de 8px a 10px entre icono y texto */
+        padding: 16px 28px; /* Aumentado padding: de 14px 24px a 16px 28px */
+        border: 1px solid;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        min-width: 150px; /* Aumentado de 140px a 150px */
+        
+        @include mobile {
+          padding: 14px 24px; /* Mejor padding en móvil */
+          min-width: auto;
+        }
+        
+        i {
+          font-size: 14px;
+        }
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        &:active {
+          transform: translateY(0);
+        }
+      }
+      
+      .logout-btn-cancel {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-primary);
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+      }
+      
+      .logout-btn-confirm {
+        background: linear-gradient(135deg, var(--error-color), #ff6b6b);
+        border-color: var(--error-color);
+        color: white;
+        
+        &:hover {
+          background: linear-gradient(135deg, #ff6b6b, var(--error-color));
+          box-shadow: 0 8px 24px rgba(255, 59, 48, 0.3);
+        }
+      }
+    }
+  }
+}
+
+// Animación para el icono de logout
+@keyframes pulse-icon {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(255, 59, 48, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 32px rgba(255, 59, 48, 0.4);
+  }
+}
+
+// Responsive para modal de logout
+@media (max-width: 600px) {
+  .logout-confirm-modal {
+    .logout-confirm-content {
+      .logout-confirm-actions {
+        .logout-btn-cancel,
+        .logout-btn-confirm {
+          font-size: 13px;
+          
+          i {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Global Pet Marker Styles - Find My inspired */
+.pet-marker {
+  width: 140px;
+  height: 140px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+  
+  &:hover {
+    transform: scale(1.1);
+    
+    .pet-avatar {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      
+      i {
+        transform: scale(1.1);
+      }
+    }
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  /* Precision circle - Find My style - SIN FONDO DIFUMINADO */
+  .outer-ring {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border: 2px solid rgba(0, 122, 255, 0.2);
+    border-radius: 50%;
+    background: transparent; /* Eliminado el fondo difuminado */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 0;
+    left: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Avatar container - Find My style - FORCED CIRCULAR */
+  .pet-avatar {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    border: 4px solid white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
+      border-radius: 50%;
+      z-index: 1;
+    }
+    
+    i {
+      font-size: 28px !important;
+      color: white !important;
+      z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      transition: all 0.2s ease;
+    }
+  }
+  
+  /* Location dot below avatar - Find My style */
+  .location-dot {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    background: #007AFF;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Pulse animation for precision circle */
+  .pulse-ring {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    top: 0;
+    left: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.4;
+    }
+    100% {
+      transform: scale(1.2);
+      opacity: 0;
+    }
+  }
+  /* Highlight animation - Find My style with 3 second duration */
+  &.highlighted {
+    animation: highlight-pulse 3s ease-in-out;
+    
+    .outer-ring {
+      animation: highlight-ring 3s ease-in-out;
+    }
+    
+    .pulse-ring {
+      animation: highlight-pulse-ring 3s ease-in-out;
+    }
+  }
+  
+  @keyframes highlight-pulse {
+    0% {
+      transform: scale(1);
+    }
+    25% {
+      transform: scale(1.3);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    75% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes highlight-ring {
+    0% {
+      border-color: rgba(0, 122, 255, 0.3);
+      background: transparent;
+      transform: scale(1);
+    }
+    25% {
+      border-color: rgba(0, 122, 255, 0.8);
+      background: transparent;
+      transform: scale(1.2);
+    }
+    50% {
+      border-color: rgba(0, 122, 255, 0.6);
+      background: transparent;
+      transform: scale(1.1);
+    }
+    100% {
+      border-color: rgba(0, 122, 255, 0.3);
+      background: transparent;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes highlight-pulse-ring {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+      border-color: rgba(0, 122, 255, 0.3);
+    }
+    25% {
+      transform: scale(1.5);
+      opacity: 0.6;
+      border-color: rgba(0, 122, 255, 0.8);
+    }
+    50% {
+      transform: scale(1.3);
+      opacity: 0.4;
+      border-color: rgba(0, 122, 255, 0.6);
+    }
+    100% {
+      transform: scale(1.2);
+      opacity: 0;
+      border-color: rgba(0, 122, 255, 0.3);
+    }
+  }
+
+  /* Improved responsive zoom adjustments */
+  &.zoom-out {
+    transform: scale(0.85);
+    
+    .outer-ring {
+      width: 110px !important;
+      height: 110px !important;
+    }
+    
+    .pulse-ring {
+      width: 110px !important;
+      height: 110px !important;
+    }
+    
+    .pet-avatar {
+      width: 50px !important;
+      height: 50px !important;
+      
+      i {
+        font-size: 24px !important;
+      }
+    }
+    
+    .location-dot {
+      width: 8px !important;
+      height: 8px !important;
+      bottom: 20px !important;
+    }
+  }
+  
+  &.zoom-far-out {
+    transform: scale(1.0);
+    
+    .outer-ring {
+      width: 160px !important;
+      height: 160px !important;
+      border-width: 2px;
+    }
+    
+    .pulse-ring {
+      width: 160px !important;
+      height: 160px !important;
+      border-width: 1px;
+    }
+    
+    .pet-avatar {
+      width: 70px !important;
+      height: 70px !important;
+      border-width: 4px;
+      
+      i {
+        font-size: 32px !important;
+      }
+    }
+    
+    .location-dot {
+      width: 12px !important;
+      height: 12px !important;
+      border-width: 3px;
+      bottom: 30px !important;
+    }
+  }
+
+  /* Entrance animation for when pets are selected */
+  &.entering {
+    transform: scale(0.3);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    
+    .outer-ring {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    
+    .pulse-ring {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    
+    .pet-avatar {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    
+    .location-dot {
+      transform: translateX(-50%) scale(0.1);
+      opacity: 0;
+    }
+  }
+}
+
+/* Improved avatar styles for map-view component (NOT marker) */
+.pet-info-card .pet-avatar,
+.animal-card .animal-avatar {
+  width: 80px !important;
+  height: 80px !important;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
+    border-radius: 50%;
+    z-index: 1;
+  }
+  
+  i {
+    font-size: 32px !important;
+    color: white;
+    z-index: 2;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  
+  .pet-status, .animal-status {
+    position: absolute;
+    top: -2px; // Posicionar encima del marco
+    right: -2px; // Posicionar encima del marco
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid white;
+    z-index: 3;
+    
+    &.online {
+      background: #34C759;
+    }
+    
+    &.offline {
+      background: #8E8E93;
+    }
+  }
+}
+
+/* Animal cards in settings - smaller size */
+.animal-card .animal-avatar {
+  width: 60px !important;
+  height: 60px !important;
+  
+  .animal-status {
+    width: 16px;
+    height: 16px;
+    border: 2px solid white;
+  }
+  
+  .pet-avatar-img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+}

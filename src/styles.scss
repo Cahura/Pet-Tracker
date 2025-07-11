@@ -1,0 +1,1011 @@
+// Global styles for Pet Tracker App - Apple Maps Dark Mode Theme
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+// Responsive Mixins
+$mobile: 480px;
+$tablet: 768px;
+$desktop: 1024px;
+
+@mixin mobile { @media (max-width: #{$mobile}) { @content; } }
+@mixin tablet { @media (max-width: #{$tablet}) { @content; } }
+@mixin desktop { @media (min-width: #{$desktop}) { @content; } }
+
+// CSS Custom Properties (Variables)
+:root {
+  // Apple-inspired dark theme colors
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #383838;
+  --bg-card: rgba(42, 42, 42, 0.95);
+  --bg-glass: rgba(42, 42, 42, 0.7);
+  --bg-blur: rgba(28, 28, 30, 0.8);
+  
+  // Liquid Glass effect
+  --liquid-glass-bg: rgba(255, 255, 255, 0.08);
+  --liquid-glass-border: rgba(255, 255, 255, 0.15);
+  --liquid-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --liquid-glass-blur: 20px;
+  --liquid-glass-hover: rgba(255, 255, 255, 0.12);
+  
+  // Enhanced glass effects
+  --glass-primary: rgba(255, 255, 255, 0.1);
+  --glass-secondary: rgba(255, 255, 255, 0.05);
+  --glass-accent: rgba(0, 122, 255, 0.2);
+  
+  // Text colors
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1a6;
+  --text-tertiary: #8e8e93;
+  --text-accent: #007aff;
+  
+  // Brand colors
+  --primary-color: #007aff;
+  --secondary-color: #5ac8fa;
+  --success-color: #34c759;
+  --warning-color: #ff9f0a;
+  --error-color: #ff3b30;
+  --info-color: #5ac8fa;
+  
+  // Spacing
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  
+  // Border radius
+  --border-radius-sm: 6px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+  
+  // Shadows
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.04);
+  
+  // Transitions
+  --transition-fast: 0.15s ease-out;
+  --transition-normal: 0.3s ease-out;
+  --transition-slow: 0.5s ease-out;
+  
+  // Glass effect
+  --glass-bg: rgba(42, 42, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  
+  // Z-index layers
+  --z-dropdown: 1000;
+  --z-sticky: 1010;
+  --z-fixed: 1020;
+  --z-modal-backdrop: 1030;
+  --z-modal: 1040;
+  --z-popover: 1050;
+  --z-tooltip: 1060;
+}
+
+// Reset and base styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-weight: 400;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Responsive fixes specifically for mobile viewport adaptation */
+
+/* Ensure full viewport coverage */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Root app container full screen */
+app-root {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Fix for iOS Safari viewport issues */
+@supports (-webkit-touch-callout: none) {
+  .pet-tracker-app {
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+  }
+  
+  .app-main {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Viewport meta fixes for mobile */
+@media screen and (max-width: 480px) {
+  .pet-tracker-app {
+    min-height: 100vh;
+    min-height: 100dvh;
+    position: relative;
+  }
+  
+  /* Ensure header doesn't interfere with map */
+  .app-header {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+  }
+  
+  /* Map container takes remaining space */
+  .app-main {
+    flex: 1;
+    min-height: 0; /* Important for flex containers */
+    position: relative;
+  }
+  
+  .map-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  
+  /* Bottom sheet mobile positioning */
+  .pet-bottom-sheet {
+    left: 50%;
+    bottom: env(safe-area-inset-bottom, 10px);
+    transform: translateX(-50%);
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    margin: 0 10px;
+  }
+  
+  /* Status island mobile positioning */
+  .status-island {
+    top: env(safe-area-inset-top, 16px);
+    left: 16px;
+    right: auto;
+    bottom: auto;
+  }
+  
+  /* Map controls mobile positioning */
+  .map-controls {
+    top: env(safe-area-inset-top, 16px);
+    right: 16px;
+    left: auto;
+    bottom: auto;
+  }
+}
+
+/* Landscape mobile fixes */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  .pet-tracker-app {
+    height: 100vh;
+  }
+  
+  .app-header .header-content {
+    padding: 8px 16px;
+  }
+  
+  .pet-bottom-sheet {
+    max-height: 70vh;
+    
+    &.expanded {
+      max-height: 85vh;
+    }
+  }
+}
+
+/* Ensure all fixed/absolute elements respect safe areas */
+@supports (padding: env(safe-area-inset-top)) {
+  .status-island {
+    top: calc(env(safe-area-inset-top) + 16px);
+  }
+  
+  .map-controls {
+    top: calc(env(safe-area-inset-top) + 16px);
+  }
+  
+  .pet-bottom-sheet {
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+  }
+  
+  .safe-zone-alert {
+    top: calc(env(safe-area-inset-top) + 20px);
+  }
+}
+
+/* Prevent horizontal scrolling */
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix for modals on mobile */
+@media screen and (max-width: 768px) {
+  .feature-modal .feature-modal-content,
+  .settings-modal .settings-content {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 40px);
+    margin: 20px 10px;
+  }
+}
+
+/* Image responsiveness */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Button tap targets for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .control-btn,
+  .mini-action-btn,
+  .action-btn,
+  .find-my-center-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Dark mode safe area handling */
+@media (prefers-color-scheme: dark) {
+  meta[name="theme-color"] {
+    content: #1a1a1a;
+  }
+}
+
+// Utility classes
+.blur-bg {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-glass);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-effect {
+  background: rgba(42, 42, 42, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+// Liquid Glass Effects - Find My inspired - más refinado
+.liquid-glass {
+  background: var(--liquid-glass-bg);
+  backdrop-filter: blur(var(--liquid-glass-blur));
+  -webkit-backdrop-filter: blur(var(--liquid-glass-blur));
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 24px; // Más circular como Find My
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    background: var(--liquid-glass-hover);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.liquid-glass-strong {
+  background: var(--glass-primary);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 28px; // Más circular y refinado
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.liquid-glass-subtle {
+  background: var(--glass-secondary);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px; // Más circular
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    background: var(--glass-primary);
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.liquid-glass-accent {
+  background: var(--glass-accent);
+  backdrop-filter: blur(var(--liquid-glass-blur));
+  -webkit-backdrop-filter: blur(var(--liquid-glass-blur));
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  border-radius: 24px; // Más circular
+  box-shadow: 0 8px 32px rgba(0, 122, 255, 0.2);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    background: rgba(0, 122, 255, 0.3);
+    border-color: rgba(0, 122, 255, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 122, 255, 0.3);
+    transform: translateY(-1px);
+  }
+}
+
+// Find My style circular buttons - más refinado
+.find-my-button {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--liquid-glass-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid var(--liquid-glass-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    background: var(--liquid-glass-hover);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  &.primary {
+    background: var(--primary-color);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
+    
+    &:hover {
+      background: #0056b3;
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 12px 32px rgba(0, 122, 255, 0.6);
+    }
+  }
+}
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.hidden { display: none !important; }
+.visible { display: block !important; }
+
+// Flexbox utilities
+.d-flex { display: flex; }
+.d-inline-flex { display: inline-flex; }
+.flex-column { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.align-center { align-items: center; }
+.align-start { align-items: flex-start; }
+.align-end { align-items: flex-end; }
+.flex-1 { flex: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+
+// Spacing utilities
+.m-0 { margin: 0; }
+.m-1 { margin: var(--spacing-xs); }
+.m-2 { margin: var(--spacing-sm); }
+.m-3 { margin: var(--spacing-md); }
+.m-4 { margin: var(--spacing-lg); }
+.m-5 { margin: var(--spacing-xl); }
+
+.p-0 { padding: 0; }
+.p-1 { padding: var(--spacing-xs); }
+.p-2 { padding: var(--spacing-sm); }
+.p-3 { padding: var(--spacing-md); }
+.p-4 { padding: var(--spacing-lg); }
+.p-5 { padding: var(--spacing-xl); }
+
+// Button component
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  gap: var(--spacing-sm);
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #0056b3;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+  }
+  
+  &.btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--bg-tertiary);
+    
+    &:hover:not(:disabled) {
+      background-color: var(--bg-tertiary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+  }
+  
+  &.btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+    
+    &:hover:not(:disabled) {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+  }
+  
+  &.btn-sm {
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: 0.75rem;
+  }
+  
+  &.btn-lg {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1rem;
+  }
+}
+
+// Card component
+.card {
+  background-color: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  &.card-glass {
+    @extend .glass-effect;
+  }
+}
+
+// Custom pet marker
+.custom-pet-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+// Estilos para avatares de mascotas
+.pet-avatar-container {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  @include mobile {
+    width: 50px;
+    height: 50px;
+  }
+  
+  img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
+  }
+}
+
+// Pet marker on map
+.pet-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: none;
+  
+  .marker-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .backup-icon {
+      color: white;
+      font-size: 20px;
+    }
+  }
+  
+  .marker-info {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-glass);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
+    .pet-name {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    
+    .pet-status {
+      color: var(--text-secondary);
+      font-size: 11px;
+      
+      &.online {
+        color: var(--success-color);
+      }
+    }
+  }
+}
+
+// Loading styles
+.map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-primary);
+  z-index: 100;
+  
+  .loading-spinner {
+    font-size: 24px;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+  }
+  
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+}
+
+// Animation utilities
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.animate-slide-down {
+  animation: slideInDown 0.6s ease-out;
+}
+
+.animate-slide-left {
+  animation: slideInLeft 0.6s ease-out;
+}
+
+.animate-slide-right {
+  animation: slideInRight 0.6s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+// Custom animations
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40%, 43% {
+    transform: translateY(-10px);
+  }
+  70% {
+    transform: translateY(-5px);
+  }
+  90% {
+    transform: translateY(-2px);
+  }
+}
+
+// Responsive utilities
+@media (max-width: 768px) {
+  .hidden-mobile { display: none !important; }
+  .visible-mobile { display: block !important; }
+  
+  .btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.8rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .hidden-desktop { display: none !important; }
+  .visible-desktop { display: block !important; }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+// Focus styles
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+// Selection styles
+::selection {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+// Mapbox overrides for dark theme and hiding default controls
+.mapboxgl-ctrl-top-right,
+.mapboxgl-ctrl-top-left,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  display: none !important;
+}
+
+.mapboxgl-ctrl-group {
+  display: none !important;
+}
+
+.mapboxgl-ctrl-zoom-in,
+.mapboxgl-ctrl-zoom-out,
+.mapboxgl-ctrl-compass,
+.mapboxgl-ctrl-geolocate {
+  display: none !important;
+}
+
+// Mapbox popup styling
+.mapboxgl-popup {
+  .mapboxgl-popup-content {
+    background: var(--bg-glass);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    padding: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+    border-top-color: var(--bg-glass);
+  }
+  
+  .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+    border-bottom-color: var(--bg-glass);
+  }
+  
+  .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+    border-right-color: var(--bg-glass);
+  }
+  
+  .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+    border-left-color: var(--bg-glass);
+  }
+}
+
+// Pet Avatar Styles - Find My Style
+.pet-avatar {
+  position: relative;
+  overflow: hidden;
+  
+  .pet-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    background: #f0f0f0;
+  }
+  
+  .pet-avatar-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    background: #ffffff;
+    border-radius: 50%;
+  }
+}
+
+// Specific styles for different contexts
+.animal-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid white;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  position: relative;
+  
+  .pet-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+  }
+  
+  .pet-avatar-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    font-size: 24px;
+  }
+  
+  .animal-status {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    z-index: 10;
+    
+    &.online {
+      background: var(--success-color);
+      box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+    }
+    
+    &.offline {
+      background: var(--text-tertiary);
+      box-shadow: 0 0 8px rgba(142, 142, 147, 0.4);
+    }
+  }
+}
+
+// Pet info card avatar (bottom sheet)
+.pet-info-card .pet-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid white;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  position: relative;
+  margin-right: 16px;
+  flex-shrink: 0;
+  
+  .pet-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+  }
+  
+  .pet-avatar-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    font-size: 32px;
+  }
+  
+  .pet-status {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid white;
+    z-index: 10;
+    
+    &.online {
+      background: var(--success-color);
+      box-shadow: 0 0 12px rgba(52, 199, 89, 0.5);
+    }
+    
+    &.offline {
+      background: var(--text-tertiary);
+      box-shadow: 0 0 12px rgba(142, 142, 147, 0.5);
+    }
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+  .pet-info-card .pet-avatar {
+    width: 70px;
+    height: 70px;
+    margin-right: 12px;
+    
+    .pet-avatar-fallback {
+      font-size: 28px;
+    }
+    
+    .pet-status {
+      width: 18px;
+      height: 18px;
+      border-width: 2px;
+    }
+  }
+  
+  .animal-avatar {
+    width: 50px;
+    height: 50px;
+    border-width: 2px;
+    
+    .pet-avatar-fallback {
+      font-size: 20px;
+    }
+    
+    .animal-status {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}

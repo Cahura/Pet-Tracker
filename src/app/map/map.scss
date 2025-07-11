@@ -205,3 +205,74 @@
 .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl-logo {
   display: none !important;
 }
+
+/* ===== USER LOCATION AVATAR STYLES ===== */
+.user-location-marker {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-location-pulse {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border: 2px solid #007AFF;
+  border-radius: 50%;
+  background: rgba(0, 122, 255, 0.1);
+  animation: userLocationPulse 2s ease-out infinite;
+  z-index: 1;
+}
+
+.user-location-avatar {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #007AFF, #0056CC);
+  border: 3px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  i {
+    font-size: 20px;
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+}
+
+/* Animación pop para el avatar del usuario */
+.user-avatar-pop {
+  animation: userAvatarPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes userAvatarPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes userLocationPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}

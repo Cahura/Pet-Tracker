@@ -32,8 +32,8 @@ export class PetSelectionService {
       breed: 'Golden Retriever', 
       status: 'online', 
       battery: 78, 
-      location: 'Miraflores, Lima', 
-      coordinates: [-77.0282, -12.1211], // Miraflores
+      location: 'Calle Cantuarias, Miraflores', 
+      coordinates: [-77.0317, -12.1165], // Calle Cantuarias con Pasaje Tello
       icon: 'fas fa-dog',
       color: '#FF6B35',
       gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
@@ -46,12 +46,12 @@ export class PetSelectionService {
       breed: 'Siamés', 
       status: 'online', 
       battery: 65, 
-      location: 'San Isidro, Lima', 
-      coordinates: [-77.0365, -12.1005], // San Isidro
+      location: 'Santa Isabel, Lima', 
+      coordinates: [-76.9568, -12.0631], // Santa Isabel (coordenadas genéricas para repo)
       icon: 'fas fa-cat',
       color: '#9B59B6',
       gradient: 'linear-gradient(135deg, #9B59B6, #8E44AD)',
-      activityState: 'lying' // Estado fijo: echada - EJEMPLO DESCANSANDO
+      activityState: 'walking' // Estado: explorando el parque
     },
     { 
       id: 3, 
@@ -60,8 +60,8 @@ export class PetSelectionService {
       breed: 'Pastor Alemán', 
       status: 'offline', 
       battery: 23, 
-      location: 'Barranco, Lima', 
-      coordinates: [-77.0176, -12.1462], // Barranco
+      location: 'Plaza Municipal, Barranco', 
+      coordinates: [-77.0185, -12.1425], // Plaza Municipal de Barranco
       icon: 'fas fa-dog',
       color: '#3498DB',
       gradient: 'linear-gradient(135deg, #3498DB, #2980B9)',
@@ -74,8 +74,8 @@ export class PetSelectionService {
       breed: 'Persa', 
       status: 'online', 
       battery: 89, 
-      location: 'Surco, Lima', 
-      coordinates: [-76.9931, -12.1340], // Surco
+      location: 'Av. Primavera, Surco', 
+      coordinates: [-76.9925, -12.1280], // Av. Primavera, Surco
       icon: 'fas fa-cat',
       color: '#E74C3C',
       gradient: 'linear-gradient(135deg, #E74C3C, #C0392B)',

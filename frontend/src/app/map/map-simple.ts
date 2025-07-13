@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
-import { RealTimeService, PetLocationData, PetIMUData, PetStatusData } from '../services/realtime.service';
+import { RealTimeService, PetLocationData, PetIMUData, PetBatteryData } from '../services/realtime.service';
 
 @Component({
   selector: 'app-map-simple',
@@ -52,18 +52,18 @@ import { RealTimeService, PetLocationData, PetIMUData, PetStatusData } from '../
           
           <div class="pet-popup-data">
             <div class="data-row" *ngIf="lastIMUUpdate">
-              <i class="fas" [class]="getActivityIcon(lastIMUUpdate.activityState)"></i>
-              <span>{{ getActivityText(lastIMUUpdate.activityState) }}</span>
+              <i class="fas" [class]="getActivityIcon(lastIMUUpdate.activity)"></i>
+              <span>{{ getActivityText(lastIMUUpdate.activity) }}</span>
             </div>
             
-            <div class="data-row" *ngIf="lastStatusUpdate?.batteryLevel">
+            <div class="data-row" *ngIf="lastBatteryUpdate?.batteryLevel">
               <i class="fas fa-battery-three-quarters"></i>
-              <span>{{ lastStatusUpdate?.batteryLevel }}%</span>
+              <span>{{ lastBatteryUpdate?.batteryLevel }}%</span>
             </div>
             
-            <div class="data-row" *ngIf="lastStatusUpdate?.signalStrength">
+            <div class="data-row" *ngIf="lastBatteryUpdate?.signalStrength">
               <i class="fas fa-signal"></i>
-              <span>{{ lastStatusUpdate?.signalStrength }}%</span>
+              <span>{{ lastBatteryUpdate?.signalStrength }}%</span>
             </div>
             
             <div class="data-row">
@@ -666,30 +666,47 @@ import { RealTimeService, PetLocationData, PetIMUData, PetStatusData } from '../
       }
     }
 
-    /* Marcadores de historial */
+    /* Marcadores de historial mejorados */
     .history-marker {
       position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .history-marker:hover {
+      transform: scale(1.1);
     }
 
     .history-dot {
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .history-marker:hover .history-dot {
+      width: 16px;
+      height: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
     .history-time {
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
-      font-size: 10px;
-      padding: 2px 4px;
-      border-radius: 4px;
-      margin-top: 4px;
-      font-weight: 500;
+      font-size: 9px;
+      padding: 3px 6px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
     }
 
     /* Mejorar el círculo de precisión para que coincida con el avatar */
@@ -829,10 +846,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   public isRealtimeConnected = false;
   public isProduction = false;
   
-  // Datos en tiempo real
+  // Datos en tiempo real optimizados
   public lastLocationUpdate: PetLocationData | null = null;
   public lastIMUUpdate: PetIMUData | null = null;
-  public lastStatusUpdate: PetStatusData | null = null;
+  public lastBatteryUpdate: PetBatteryData | null = null;
   
   // Popup de información de mascota
   public showPetPopup = false;
@@ -841,8 +858,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private popupTimeout: any = null;
   private isPopupHovered = false;
   
-  // Pet location (Lima center for demo)
-  private petLocation: [number, number] = [-77.0282, -12.1211];
+  // Pet location (Santa Isabel for Luna - coordenadas genéricas para repo)
+  private petLocation: [number, number] = [-76.9568, -12.0631];
 
   constructor(
     private realTimeService: RealTimeService,
@@ -1314,39 +1331,113 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   public showPetHistory(petData: any): void {
     console.log('Showing pet history on map for:', petData.name);
     
-    // Historiales únicos para cada mascota en Lima
+    // Historiales únicos para cada mascota siguiendo calles REALES de Lima
     const historyRoutes: { [key: string]: [number, number][] } = {
       'Max': [
-        [-77.0282, -12.1211], // Miraflores (actual)
-        [-77.0265, -12.1195], // Hace 1 hora - Parque Kennedy
-        [-77.0245, -12.1180], // Hace 2 horas - Larcomar
-        [-77.0225, -12.1165], // Hace 3 horas - Malecón
-        [-77.0205, -12.1150], // Hace 4 horas - Playa Waikiki
-        [-77.0185, -12.1135]  // Hace 5 horas - Barranco
+        // MAX - Ruta desde Calle Cantuarias y Pasaje Tello a Parque Kennedy
+        [-77.0317, -12.1165], // Inicio: Calle Cantuarias con Pasaje Tello, Miraflores
+        [-77.0315, -12.1162], // Por Calle Cantuarias hacia el norte
+        [-77.0312, -12.1158], // Continuando por Cantuarias
+        [-77.0308, -12.1155], // Girando hacia Av. José Pardo
+        [-77.0305, -12.1153], // Av. José Pardo cuadra 1
+        [-77.0300, -12.1150], // José Pardo cuadra 2
+        [-77.0295, -12.1147], // José Pardo cuadra 3
+        [-77.0290, -12.1145], // José Pardo cuadra 4
+        [-77.0285, -12.1143], // José Pardo cuadra 5
+        [-77.0280, -12.1141], // Llegando a Av. Larco
+        [-77.0278, -12.1140], // Girando en Av. Larco hacia Parque Kennedy
+        [-77.0276, -12.1138], // Av. Larco cuadra 10
+        [-77.0274, -12.1136], // Av. Larco cuadra 11
+        [-77.0272, -12.1134], // Entrando al área del Parque Kennedy
+        [-77.0270, -12.1132], // Centro del Parque Kennedy - destino
+        [-77.0272, -12.1135], // Regreso por otro sendero del parque
+        [-77.0275, -12.1137], // Saliendo por Av. Larco
+        [-77.0278, -12.1140], // De vuelta por Av. Larco
+        [-77.0282, -12.1143], // Girando hacia José Pardo para regresar
+        [-77.0285, -12.1145], // José Pardo de regreso cuadra 5
+        [-77.0290, -12.1147], // José Pardo cuadra 4
+        [-77.0295, -12.1150], // José Pardo cuadra 3
+        [-77.0300, -12.1152], // José Pardo cuadra 2
+        [-77.0305, -12.1155], // José Pardo cuadra 1
+        [-77.0308, -12.1158], // Girando hacia Cantuarias
+        [-77.0312, -12.1160], // Por Cantuarias de regreso
+        [-77.0315, -12.1163], // Continuando por Cantuarias
+        [-77.0317, -12.1165]  // De vuelta a casa: Cantuarias con Pasaje Tello
       ],
       'Luna': [
-        [-77.0365, -12.1005], // San Isidro (actual)
-        [-77.0350, -12.0990], // Hace 1 hora - Bosque El Olivar
-        [-77.0335, -12.0975], // Hace 2 horas - Centro Financiero
-        [-77.0320, -12.0960], // Hace 3 horas - Country Club
-        [-77.0305, -12.0945], // Hace 4 horas - Golf Los Incas
-        [-77.0290, -12.0930]  // Hace 5 horas - Jockey Plaza
+        [-76.9568, -12.0631], // Inicio: Casa en Santa Isabel
+        [-76.9567, -12.0630], // Caminando por la calle residencial
+        [-76.9566, -12.0628], // Hacia Av. Los Incas
+        [-76.9565, -12.0627], // Por Av. Los Incas hacia el norte
+        [-76.9564, -12.0625], // Continuando por Los Incas
+        [-76.9563, -12.0624], // Girando hacia un parque local
+        [-76.9562, -12.0622], // Explorando área verde
+        [-76.9561, -12.0621], // En el parque jugando
+        [-76.9562, -12.0622], // Regresando por área verde
+        [-76.9564, -12.0623], // De vuelta por Los Incas
+        [-76.9565, -12.0625], // Por la avenida principal
+        [-76.9567, -12.0627], // Girando hacia casa
+        [-76.9568, -12.0629], // Calle residencial de regreso
+        [-76.9568, -12.0631]  // De vuelta a casa
       ],
       'Charlie': [
-        [-77.0176, -12.1462], // Barranco (actual)
-        [-77.0160, -12.1447], // Hace 1 hora - Puente de los Suspiros
-        [-77.0145, -12.1432], // Hace 2 horas - Bajada de Baños
-        [-77.0130, -12.1417], // Hace 3 horas - Chorrillos
-        [-77.0115, -12.1402], // Hace 4 horas - La Herradura
-        [-77.0100, -12.1387]  // Hace 5 horas - Agua Dulce
+        // CHARLIE - Ruta turística por Barranco desde Plaza de Armas a Puente de los Suspiros
+        [-77.0185, -12.1425], // Inicio: Plaza Municipal de Barranco
+        [-77.0183, -12.1428], // Saliendo de la plaza por Jr. Lima
+        [-77.0180, -12.1432], // Jr. Lima hacia el norte
+        [-77.0178, -12.1435], // Continuando por Jr. Lima
+        [-77.0175, -12.1438], // Jr. Lima cuadra 3
+        [-77.0173, -12.1442], // Girando hacia Jr. Ayacucho
+        [-77.0171, -12.1445], // Jr. Ayacucho hacia el malecón
+        [-77.0169, -12.1448], // Continuando por Ayacucho
+        [-77.0167, -12.1452], // Jr. Ayacucho llegando al área histórica
+        [-77.0165, -12.1455], // Girando hacia Jr. Batallón Callao
+        [-77.0164, -12.1458], // Jr. Batallón Callao
+        [-77.0163, -12.1461], // Acercándose al Puente de los Suspiros
+        [-77.0162, -12.1464], // Llegando al Puente de los Suspiros
+        [-77.0161, -12.1467], // Explorando el área del puente
+        [-77.0163, -12.1465], // Regresando por el área histórica
+        [-77.0165, -12.1462], // De vuelta por Jr. Batallón Callao
+        [-77.0167, -12.1459], // Girando hacia Jr. Ayacucho
+        [-77.0169, -12.1456], // Jr. Ayacucho de regreso
+        [-77.0171, -12.1453], // Continuando por Ayacucho
+        [-77.0173, -12.1450], // Jr. Ayacucho hacia Jr. Lima
+        [-77.0175, -12.1447], // Girando a Jr. Lima
+        [-77.0178, -12.1444], // Jr. Lima de regreso cuadra 3
+        [-77.0180, -12.1441], // Jr. Lima cuadra 2
+        [-77.0183, -12.1437], // Jr. Lima cuadra 1
+        [-77.0185, -12.1434], // Llegando a la plaza
+        [-77.0185, -12.1425]  // De vuelta a Plaza Municipal de Barranco
       ],
       'Bella': [
-        [-76.9931, -12.1340], // Surco (actual)
-        [-76.9915, -12.1325], // Hace 1 hora - CC Jockey Plaza
-        [-76.9900, -12.1310], // Hace 2 horas - Parque de la Amistad
-        [-76.9885, -12.1295], // Hace 3 horas - La Molina
-        [-76.9870, -12.1280], // Hace 4 horas - Cieneguilla
-        [-76.9855, -12.1265]  // Hace 5 horas - Pachacamac
+        // BELLA - Ruta elegante por Surco desde Av. Primavera al Parque de la Amistad
+        [-76.9925, -12.1280], // Inicio: Casa en Av. Primavera, Surco
+        [-76.9923, -12.1278], // Saliendo por Av. Primavera hacia el norte
+        [-76.9920, -12.1275], // Av. Primavera cuadra 12
+        [-76.9918, -12.1273], // Av. Primavera cuadra 13
+        [-76.9915, -12.1270], // Girando hacia Av. El Derby
+        [-76.9912, -12.1268], // Av. El Derby cuadra 1
+        [-76.9910, -12.1265], // Av. El Derby cuadra 2
+        [-76.9908, -12.1263], // El Derby hacia Av. Velasco Astete
+        [-76.9905, -12.1260], // Av. Velasco Astete
+        [-76.9903, -12.1258], // Velasco Astete hacia el parque
+        [-76.9900, -12.1255], // Acercándose al Parque de la Amistad
+        [-76.9898, -12.1253], // Entrada del Parque de la Amistad
+        [-76.9895, -12.1250], // Centro del parque - área de juegos
+        [-76.9893, -12.1248], // Área verde norte del parque
+        [-76.9895, -12.1251], // Regresando por sendero central
+        [-76.9898, -12.1254], // Saliendo del parque
+        [-76.9900, -12.1256], // De vuelta a Av. Velasco Astete
+        [-76.9903, -12.1259], // Velasco Astete de regreso
+        [-76.9905, -12.1261], // Hacia Av. El Derby
+        [-76.9908, -12.1264], // Av. El Derby de regreso cuadra 2
+        [-76.9910, -12.1266], // El Derby cuadra 1
+        [-76.9912, -12.1269], // Girando a Av. Primavera
+        [-76.9915, -12.1271], // Av. Primavera cuadra 13
+        [-76.9918, -12.1274], // Av. Primavera cuadra 12
+        [-76.9920, -12.1276], // Av. Primavera hacia casa
+        [-76.9923, -12.1279], // Llegando a casa
+        [-76.9925, -12.1280]  // De vuelta a casa en Av. Primavera
       ]
     };
 
@@ -1388,7 +1479,28 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         }
       });
 
-      // Añadir puntos de historial
+      // Etiquetas descriptivas para cada punto de la ruta
+      const routeLabels: { [key: string]: string[] } = {
+        'Max': [
+          'Inicio', 'Av. Larco', 'Av. Larco', 'José Pardo', 'José Pardo', 
+          'Malecón', 'Malecón', 'P. Amor', 'P. Amor', 'Regreso', 'Diagonal', 'Schell'
+        ],
+        'Luna': [
+          'Inicio', 'El Rosario', 'El Rosario', 'R. Panamá', 'R. Panamá', 
+          'J. Prado', 'Begonias', 'Regreso'
+        ],
+        'Charlie': [
+          'Inicio', 'Batallón', 'Bajada', 'Bajada', 'Playa', 'Malecón', 'Av. Grau'
+        ],
+        'Bella': [
+          'Inicio', 'Caminos', 'Caminos', 'Benavides', 'Benavides', 
+          'Jockey', 'J. Prado', 'Eucaliptos'
+        ]
+      };
+
+      const labels = routeLabels[petData.name] || routeLabels['Max'];
+
+      // Añadir puntos de historial con etiquetas descriptivas
       historyRoute.forEach((coord, index) => {
         if (index === 0) return; // Saltar el punto actual
 
@@ -1396,7 +1508,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         markerElement.className = 'history-marker';
         markerElement.innerHTML = `
           <div class="history-dot" style="background-color: ${petData.color || '#34C759'}"></div>
-          <div class="history-time">${index}h</div>
+          <div class="history-time">${labels[index] || `P${index}`}</div>
         `;
 
         const historyMarker = new mapboxgl.Marker(markerElement)
@@ -1595,15 +1707,15 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Suscribirse a los datos de estado
-    const statusSub = this.realTimeService.status$.subscribe(statusData => {
-      if (statusData) {
-        this.lastStatusUpdate = statusData;
-        this.updatePetStatus(statusData);
+    // Suscribirse a los datos de batería
+    const batterySub = this.realTimeService.battery$.subscribe(batteryData => {
+      if (batteryData) {
+        this.lastBatteryUpdate = batteryData;
+        this.updatePetBattery(batteryData);
       }
     });
 
-    this.subscriptions.push(connectionSub, locationSub, imuSub, statusSub);
+    this.subscriptions.push(connectionSub, locationSub, imuSub, batterySub);
   }
 
   private updatePetLocation(locationData: PetLocationData): void {
@@ -1692,7 +1804,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   private updatePetActivity(imuData: PetIMUData): void {
-    console.log('Actualizando actividad de mascota:', imuData.activityState);
+    console.log('Actualizando actividad de mascota:', imuData.activity);
     
     // Solo actualizar si es la mascota Max (que recibe datos del ESP32)
     if (this.petMarker) {
@@ -1704,15 +1816,15 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         // Optimización: solo cambiar si el estado es diferente
         const currentState = markerElement.className.match(/state-(\w+)/)?.[1];
         
-        if (currentState !== imuData.activityState) {
+        if (currentState !== imuData.activity) {
           // Actualizar clases CSS según el estado con transición suave
           markerElement.classList.remove('state-lying', 'state-standing', 'state-walking', 'state-running');
-          markerElement.classList.add(`state-${imuData.activityState}`);
+          markerElement.classList.add(`state-${imuData.activity}`);
           
           // Trigger a subtle animation for activity change
-          this.triggerActivityChangeAnimation(markerElement, imuData.activityState);
+          this.triggerActivityChangeAnimation(markerElement, imuData.activity);
           
-          console.log(`Max activity updated from ${currentState} to: ${imuData.activityState}`);
+          console.log(`Max activity updated from ${currentState} to: ${imuData.activity}`);
         }
       }
     }
@@ -1784,21 +1896,31 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  private updatePetStatus(statusData: PetStatusData): void {
-    console.log('Actualizando estado de mascota:', statusData.status);
+  private updatePetBattery(batteryData: PetBatteryData): void {
+    console.log('Actualizando batería de mascota:', batteryData.batteryLevel + '%');
     
     if (this.petMarker) {
       const markerElement = this.petMarker.getElement();
       const statusElement = markerElement.querySelector('.pet-status');
       
       if (statusElement) {
-        // Actualizar color del punto de estado
-        const bgColor = statusData.status === 'online' ? '#34C759' : '#8E8E93';
+        // Actualizar color del punto de estado según batería
+        let bgColor = '#34C759'; // Verde por defecto
+        if (batteryData.batteryLevel < 20) {
+          bgColor = '#FF3B30'; // Rojo si batería baja
+        } else if (batteryData.batteryLevel < 50) {
+          bgColor = '#FF9500'; // Naranja si batería media
+        }
+        
         (statusElement as HTMLElement).style.backgroundColor = bgColor;
         
-        // Agregar/quitar clases de estado
-        statusElement.classList.remove('status-online', 'status-offline');
-        statusElement.classList.add(`status-${statusData.status}`);
+        // Actualizar clases de estado
+        statusElement.classList.remove('status-online', 'status-offline', 'status-low-battery');
+        statusElement.classList.add(`status-${batteryData.status}`);
+        
+        if (batteryData.batteryLevel < 20) {
+          statusElement.classList.add('status-low-battery');
+        }
       }
     }
   }
@@ -1810,7 +1932,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       icon: 'fas fa-dog',
       gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
       color: '#FF6B35',
-      status: this.lastStatusUpdate?.status || 'online',
+      status: this.lastBatteryUpdate?.status || 'online',
       coordinates: [locationData.longitude, locationData.latitude] as [number, number]
     };
     

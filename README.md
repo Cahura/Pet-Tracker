@@ -1,53 +1,121 @@
-# 🐾 PetTracker - Rastreador de Mascotas
+# Pet Tracker – Seguimiento GPS en tiempo real
 
-Una aplicación web elegante y moderna para rastrear la ubicación de tu mascota en tiempo real usando ESP32-C6 y GPS NEO-6M.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Cahura/pet-tracker/main/frontend/public/pet-icon.svg" alt="Pet Tracker Logo" width="120" height="120">
+  
+  ![Angular](https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white)
+  ![Socket.IO](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)
+  ![ESP32](https://img.shields.io/badge/ESP32-000000?style=for-the-badge&logo=espressif&logoColor=white)
+  ![Railway](https://img.shields.io/badge/Railway-131415?style=for-the-badge&logo=railway&logoColor=white)
+  ![Mapbox](https://img.shields.io/badge/Mapbox-000000?style=for-the-badge&logo=mapbox&logoColor=white)
+</div>
 
-## 🌟 Características Principales
+## 🎯 Descripción del Proyecto
 
-### 🗺️ **Rastreo Inteligente**
-- **Seguimiento en tiempo real**: Visualiza la ubicación actual de tu mascota en un mapa interactivo
-- **Historial de rutas**: Ve el recorrido completo de tu mascota con timestamps
-- **Avatar de usuario**: Encuentra tu propia ubicación con animación elegante
-- **Popups informativos**: Información detallada con hover sobre mascotas
+Pet Tracker es una aplicación web completa de seguimiento GPS en tiempo real para mascotas, desarrollada con tecnologías modernas y arquitectura escalable. El sistema permite monitorear la ubicación de mascotas a través de dispositivos ESP32C6 que se comunican con una aplicación web Angular mediante Socket.IO.
 
-### 🎛️ **Controles Avanzados**
-- **Toggle functionality**: Botones con estado activo/inactivo para todas las funciones
-- **Zonas seguras**: Configuración modal con diseño liquid glass
-- **Gestión de alertas**: Sistema completo de notificaciones
-- **Galería de fotos**: Visualización de imágenes de mascotas
+### �️ Arquitectura del Sistema
 
-### 🎨 **Diseño Premium**
-- **Liquid Glass Design**: Efectos de cristal líquido inspirados en Apple
-- **Animaciones suaves**: Transiciones con cubic-bezier para sensación premium
-- **Responsive design**: Optimizado para móviles, tablets y desktop
-- **Dark theme**: Tema oscuro elegante con colores adaptativos
+```
+ESP32C6 Device  ←→  Socket.IO Backend (Railway)  ←→  Angular Frontend (Vercel)
+     │                        │                           │
+  GPS Module              Real-time WS                MapBox Maps
+  WiFi Module            Data Processing             Notifications
+  Battery Monitor        Device Management           History Tracking
+```
 
-### 📱 **Experiencia Móvil**
-- **Optimización táctil**: Targets de toque apropiados para dedos
-- **Safe areas**: Respeta las áreas seguras de iOS y Android
-- **Viewport adaptativo**: Se ajusta perfectamente a cualquier pantalla
-- **Notificaciones optimizadas**: Sistema de alertas no intrusivo
+## 🚀 Características Principales
 
-## 🚀 Tecnologías Utilizadas
+- **📍 Seguimiento GPS en tiempo real** - Ubicación precisa con updates cada 5 segundos
+- **🗺️ Mapas interactivos** - Visualización con MapBox GL JS y rutas realistas
+- **🔔 Notificaciones inteligentes** - Alertas de zona segura con diseño glassmorphism
+- **📱 Interfaz responsiva** - Optimizada para dispositivos móviles y desktop
+- **🔋 Monitoreo de batería** - Control del estado de los dispositivos ESP32C6
+- **📊 Historial de rutas** - Almacenamiento y visualización de trayectorias
+- **🛡️ Zonas seguras** - Configuración de áreas permitidas con alertas automáticas
 
-- **Angular 18**: Framework web moderno con SSR y optimizaciones
-- **Mapbox GL JS**: Mapas interactivos de alta calidad con renderizado acelerado
-- **TypeScript**: Desarrollo tipado y robusto con latest features
-- **SCSS**: Estilos avanzados con variables CSS y responsive design
-- **RxJS**: Programación reactiva para tiempo real
-- **Font Awesome 6**: Iconos profesionales y modernos
-- **Pusher**: WebSockets para comunicación en tiempo real con ESP32
+## �️ Pila Tecnológica
 
-## ✨ Nuevas Características (Latest Update)
+### Frontend
+- **Angular 18** - Framework principal
+- **TypeScript** - Lenguaje de programación
+- **Socket.IO Client** - Comunicación en tiempo real
+- **MapBox GL JS** - Renderizado de mapas
+- **SCSS** - Estilos avanzados con glassmorphism
 
-### 🎮 **Toggle Controls System**
-- Todos los botones (historial, alertas, zonas, fotos) tienen funcionalidad toggle
-- Estados visuales activos con indicadores luminosos
-- Sincronización perfecta entre botones y modales
+### Backend
+- **Node.js** - Servidor principal
+- **Express.js** - Framework web
+- **Socket.IO** - WebSocket en tiempo real
+- **Railway** - Plataforma de despliegue
 
-### 👤 **Enhanced User Location**
-- Avatar de persona con gradiente azul Apple-style
-- Animación "pop" con cubic-bezier premium
+### Hardware
+- **ESP32C6** - Microcontrolador principal
+- **GPS Module** - Módulo de posicionamiento
+- **WiFi** - Conectividad inalámbrica
+
+## 📋 Requisitos Previos
+
+- **Node.js** ≥ v20.19.0
+- **npm** ≥ 10.0.0
+- **Angular CLI** ≥ 18.0.0
+- **Git** para control de versiones
+- **Arduino IDE** o **PlatformIO** para ESP32C6
+
+## 🔧 Instalación Local
+
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/Cahura/pet-tracker.git
+cd pet-tracker
+```
+
+### 2. Configurar Backend
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Editar .env con tus configuraciones
+npm run dev
+```
+
+### 3. Configurar Frontend
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+### 4. Configurar ESP32C6
+```bash
+cd esp32c6
+# Abrir firmware.ino en Arduino IDE
+# Configurar WiFi y URL del servidor
+# Subir a ESP32C6
+```
+
+## 🚀 Despliegue en Producción
+
+### 1. Backend en Railway
+```bash
+cd backend
+npm install
+git push railway main
+```
+
+### 2. Frontend en Vercel
+```bash
+cd frontend
+npm install
+ng build --configuration production
+# Desplegar en Vercel
+```
+
+### 3. Configurar ESP32C6
+```cpp
+// En firmware.ino
+const char* socketIOHost = "tu-backend.up.railway.app";
+```
 - Pulso de ubicación con transparencias suaves
 - Auto-fade después de 8 segundos
 

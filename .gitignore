@@ -42,6 +42,10 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Archivos de configuración privada
+.env.local
+.env.private
+
 # Node modules
 node_modules/
 

@@ -3,14 +3,13 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import Pusher from 'pusher-js';
 import { environment } from '../../environments/environment';
 
+// Interfaces optimizadas para ESP32 + Soketi
 export interface PetLocationData {
   petId: string;
   latitude: number;
   longitude: number;
-  timestamp: number;
-  accuracy?: number;
-  speed?: number;
   altitude?: number;
+  timestamp: number;
 }
 
 export interface PetIMUData {
@@ -21,15 +20,15 @@ export interface PetIMUData {
   gyroX: number;
   gyroY: number;
   gyroZ: number;
+  activity: 'lying' | 'standing' | 'walking' | 'running' | 'unknown';
   timestamp: number;
-  activityState: 'lying' | 'standing' | 'walking' | 'running' | 'unknown';
 }
 
-export interface PetStatusData {
+export interface PetBatteryData {
   petId: string;
+  batteryLevel: number;
+  signalStrength: number;
   status: 'online' | 'offline';
-  batteryLevel?: number;
-  signalStrength?: number;
   timestamp: number;
 }
 
@@ -41,16 +40,16 @@ export class RealTimeService {
   private channel: any;
   private isConnected = false;
 
-  // BehaviorSubjects para los datos en tiempo real
+  // BehaviorSubjects optimizados para los 3 tipos de datos
   private locationSubject = new BehaviorSubject<PetLocationData | null>(null);
   private imuSubject = new BehaviorSubject<PetIMUData | null>(null);
-  private statusSubject = new BehaviorSubject<PetStatusData | null>(null);
+  private batterySubject = new BehaviorSubject<PetBatteryData | null>(null);
   private connectionSubject = new BehaviorSubject<boolean>(false);
 
-  // Observables públicos
+  // Observables públicos optimizados
   public location$ = this.locationSubject.asObservable();
   public imuData$ = this.imuSubject.asObservable();
-  public status$ = this.statusSubject.asObservable();
+  public battery$ = this.batterySubject.asObservable();
   public connection$ = this.connectionSubject.asObservable();
 
   constructor() {
@@ -101,49 +100,49 @@ export class RealTimeService {
 
   private subscribeToChannel(): void {
     try {
-      // Usar el APP_ID como nombre del canal
+      // Suscribirse al canal pet-tracker
       this.channel = this.pusher.subscribe('pet-tracker');
 
-      // Throttle para eventos de ubicación (max 1 por segundo)
+      // GPS Data - cada 2 segundos
       let lastLocationUpdate = 0;
       this.channel.bind('location-update', (data: PetLocationData) => {
         const now = Date.now();
-        if (now - lastLocationUpdate > 1000) { // Max 1 actualización por segundo
-          console.log('Received location update:', data);
+        if (now - lastLocationUpdate > 1000) {
+          console.log('📍 GPS recibido:', data);
           this.locationSubject.next(data);
           lastLocationUpdate = now;
         }
       });
 
-      // Throttle para eventos IMU (max 1 cada 500ms para fluidez)
+      // IMU Data - cada 1 segundo
       let lastIMUUpdate = 0;
       this.channel.bind('imu-update', (data: PetIMUData) => {
         const now = Date.now();
-        if (now - lastIMUUpdate > 500) { // Max 2 actualizaciones por segundo
-          console.log('Received IMU update:', data);
+        if (now - lastIMUUpdate > 500) {
+          console.log('📊 IMU recibido:', data);
           this.imuSubject.next(data);
           lastIMUUpdate = now;
         }
       });
 
-      // Throttle para eventos de estado (max 1 cada 5 segundos)
-      let lastStatusUpdate = 0;
-      this.channel.bind('status-update', (data: PetStatusData) => {
+      // Battery Data - cada 5 segundos
+      let lastBatteryUpdate = 0;
+      this.channel.bind('battery-update', (data: PetBatteryData) => {
         const now = Date.now();
-        if (now - lastStatusUpdate > 5000) { // Max 1 cada 5 segundos
-          console.log('Received status update:', data);
-          this.statusSubject.next(data);
-          lastStatusUpdate = now;
+        if (now - lastBatteryUpdate > 3000) {
+          console.log('🔋 Batería recibida:', data);
+          this.batterySubject.next(data);
+          lastBatteryUpdate = now;
         }
       });
 
-      // Evento de conexión del canal
+      // Eventos del canal
       this.channel.bind('pusher:subscription_succeeded', () => {
-        console.log('Successfully subscribed to pet-tracker channel - Production ready');
+        console.log('✅ Conectado a pet-tracker - Esperando datos ESP32');
       });
 
       this.channel.bind('pusher:subscription_error', (error: any) => {
-        console.error('Failed to subscribe to channel:', error);
+        console.error('❌ Error en canal:', error);
       });
 
     } catch (error) {
@@ -166,45 +165,45 @@ export class RealTimeService {
     }, 1000);
   }
 
-  // Método para simular datos (útil para testing)
+  // Método para simular datos optimizado para ESP32
   public simulateData(): void {
     if (!environment.production) {
-      // Simular ubicación (Madrid center con variación)
+      // Simular GPS (Madrid con variación realista) - SOLO PARA MAX (ID: 1)
       const mockLocation: PetLocationData = {
-        petId: 'pet-001',
-        latitude: 40.4168 + (Math.random() - 0.5) * 0.01,
-        longitude: -3.7038 + (Math.random() - 0.5) * 0.01,
-        timestamp: Date.now(),
-        accuracy: Math.random() * 10 + 2,
-        speed: Math.random() * 5,
-        altitude: 650 + Math.random() * 50
+        petId: '1', // Max es ID 1 - la única mascota real
+        latitude: 40.4168 + (Math.random() - 0.5) * 0.001,
+        longitude: -3.7038 + (Math.random() - 0.5) * 0.001,
+        altitude: 650 + Math.random() * 10,
+        timestamp: Date.now()
       };
 
-      // Simular datos IMU
+      // Simular IMU con actividad - SOLO PARA MAX (ID: 1)
+      const activities: ('lying' | 'standing' | 'walking' | 'running' | 'unknown')[] = 
+        ['lying', 'standing', 'walking', 'running'];
       const mockIMU: PetIMUData = {
-        petId: 'pet-001',
+        petId: '1', // Max es ID 1 - la única mascota real
         accelX: (Math.random() - 0.5) * 2,
         accelY: (Math.random() - 0.5) * 2,
-        accelZ: 9.8 + (Math.random() - 0.5) * 2,
-        gyroX: (Math.random() - 0.5) * 100,
-        gyroY: (Math.random() - 0.5) * 100,
-        gyroZ: (Math.random() - 0.5) * 100,
-        timestamp: Date.now(),
-        activityState: Math.random() > 0.5 ? 'standing' : 'lying'
+        accelZ: 9.8 + (Math.random() - 0.5) * 0.5,
+        gyroX: (Math.random() - 0.5) * 10,
+        gyroY: (Math.random() - 0.5) * 10,
+        gyroZ: (Math.random() - 0.5) * 10,
+        activity: activities[Math.floor(Math.random() * activities.length)],
+        timestamp: Date.now()
       };
 
-      // Simular estado
-      const mockStatus: PetStatusData = {
-        petId: 'pet-001',
-        status: 'online',
+      // Simular batería - SOLO PARA MAX (ID: 1)
+      const mockBattery: PetBatteryData = {
+        petId: '1', // Max es ID 1 - la única mascota real
         batteryLevel: Math.floor(Math.random() * 100),
         signalStrength: Math.floor(Math.random() * 100),
+        status: 'online',
         timestamp: Date.now()
       };
 
       this.locationSubject.next(mockLocation);
       this.imuSubject.next(mockIMU);
-      this.statusSubject.next(mockStatus);
+      this.batterySubject.next(mockBattery);
     }
   }
 

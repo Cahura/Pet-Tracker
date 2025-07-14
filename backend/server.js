@@ -61,6 +61,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -96,6 +97,20 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Servir archivos estáticos del frontend en producción
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'public')));
+  
+  // Manejar rutas de Angular (SPA routing)
+  app.get('*', (req, res, next) => {
+    // Skip API routes and health check
+    if (req.path.startsWith('/health') || req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+}
 
 // Endpoint de salud para Railway
 app.get('/health', (req, res) => {

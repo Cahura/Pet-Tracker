@@ -4,7 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build --configuration production && cp -r dist/* ../backend/public/ 2>/dev/null || xcopy dist\\* ..\\backend\\public\\ /E /I /Y 2>nul || true",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

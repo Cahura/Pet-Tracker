@@ -63,8 +63,10 @@ export class RealTimeService {
       this.pusher = new Pusher(environment.pusher.key, {
         cluster: environment.pusher.cluster,
         wsHost: environment.pusher.wsHost,
-        wsPort: environment.pusher.wsPort,
-        wssPort: environment.pusher.wssPort,
+        wsPort: typeof environment.pusher.wsPort === 'string' ? 
+                parseInt(environment.pusher.wsPort) : environment.pusher.wsPort,
+        wssPort: typeof environment.pusher.wssPort === 'string' ? 
+                 parseInt(environment.pusher.wssPort) : environment.pusher.wssPort,
         forceTLS: environment.pusher.forceTLS,
         enabledTransports: ['ws', 'wss'] as any,
         disableStats: true,

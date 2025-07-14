@@ -7,7 +7,16 @@
     "test": "cd frontend && npm test",
     "start-backend": "cd backend && node server.js",
     "dev": "concurrently \"npm run start-backend\" \"npm run start\"",
-    "install-all": "cd frontend && npm install && cd ../backend && npm install"
+    "install-all": "cd frontend && npm install && cd ../backend && npm install",
+    "railway:build": "npm run install-frontend && npm run build-frontend && npm run install-backend",
+    "railway:start": "cd backend && npm start",
+    "install-frontend": "cd frontend && npm ci",
+    "build-frontend": "cd frontend && npm run build:prod && mkdir -p ../backend/public && cp -r dist/pet-tracker/browser/* ../backend/public/ 2>/dev/null || (mkdir ..\\backend\\public 2>nul & xcopy dist\\pet-tracker\\browser\\* ..\\backend\\public\\ /E /I /Y 2>nul) || true",
+    "install-backend": "cd backend && npm ci"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -1,0 +1,23 @@
+[providers]
+nodejs = {}
+
+[build]
+cmds = [
+    "npm install",
+    "npm run railway:build"
+]
+
+[start]
+cmd = "npm run railway:start"
+
+[variables]
+NODE_ENV = "production"
+
+[phases.build]
+cmds = [
+    "echo 'Building Pet Tracker...'",
+    "npm run install-frontend",
+    "npm run build-frontend", 
+    "npm run install-backend",
+    "echo 'Build completed successfully!'"
+]

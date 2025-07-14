@@ -8,9 +8,9 @@
 const char* ssid = "TU_WIFI_SSID";
 const char* password = "TU_WIFI_PASSWORD";
 
-// Configuración del servidor Socket.IO
-const char* websockets_server = "192.168.1.100"; // IP de tu servidor Node.js
-const int websockets_port = 3000;
+// Configuración del servidor Socket.IO para Railway
+const char* websockets_server = "pet-tracker-production.up.railway.app";
+const int websockets_port = 443;
 
 // Cliente WebSocket
 using namespace websockets;
@@ -199,7 +199,7 @@ void setupWebSocket() {
   });
   
   // Conectar al servidor
-  String url = "ws://" + String(websockets_server) + ":" + String(websockets_port) + "/socket.io/?EIO=4&transport=websocket";
+  String url = "wss://" + String(websockets_server) + ":" + String(websockets_port) + "/socket.io/?EIO=4&transport=websocket";
   
   bool connected = client.connect(url);
   

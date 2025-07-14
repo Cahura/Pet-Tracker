@@ -1,14 +1,14 @@
 export const environment = {
   production: true,
-  socketUrl: window.location.origin, // Usa la misma URL del servidor
+  socketUrl: 'https://pet-tracker-production.up.railway.app',
   mapboxToken: 'pk.eyJ1Ijoia2FsaXRvczAiLCJhIjoiY21jcXp3aWxrMHBiMTJtb3JxNDB0enhuMSJ9.IARuB5IywY0T0h2SA60vLw',
-  apiUrl: window.location.origin + '/api',
+  apiUrl: 'https://pet-tracker-production.up.railway.app/api',
   pusher: {
     key: 'your-pusher-key',
     cluster: 'us2',
-    wsHost: window.location.hostname,
-    wsPort: parseInt(window.location.port) || (window.location.protocol === 'https:' ? 443 : 80),
-    wssPort: parseInt(window.location.port) || (window.location.protocol === 'https:' ? 443 : 80),
-    forceTLS: window.location.protocol === 'https:'
+    wsHost: 'pet-tracker-production.up.railway.app',
+    wsPort: 443,
+    wssPort: 443,
+    forceTLS: true
   }
 };

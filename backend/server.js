@@ -71,9 +71,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: [
-      "http://localhost:4200",
-      "https://pet-tracker-frontend.vercel.app",
-      "https://pet-tracker-*.vercel.app",
+      "https://pet-tracker-production.up.railway.app",
       process.env.FRONTEND_URL,
       process.env.RAILWAY_STATIC_URL,
       process.env.RAILWAY_PUBLIC_DOMAIN
@@ -90,9 +88,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors({
   origin: [
-    "http://localhost:4200",
-    "https://pet-tracker-frontend.vercel.app",
-    "https://pet-tracker-*.vercel.app",
+    "https://pet-tracker-production.up.railway.app",
     process.env.FRONTEND_URL,
     process.env.RAILWAY_STATIC_URL,
     process.env.RAILWAY_PUBLIC_DOMAIN
@@ -343,7 +339,7 @@ io.on('connection', (socket) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Pet Tracker Backend iniciado en puerto ${PORT} (0.0.0.0)`);
   console.log(`🌐 Servidor Socket.IO listo para conexiones`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📊 Health check: https://pet-tracker-production.up.railway.app/health`);
 });
 
 // Manejo de errores del servidor

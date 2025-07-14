@@ -239,16 +239,16 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private initializeSocket() {
-    // Conectar al servidor Socket.IO
-    this.socket = io('http://localhost:3000');
+    // Conectar al servidor Socket.IO en Railway
+    this.socket = io('https://pet-tracker-production.up.railway.app');
     
     this.socket.on('connect', () => {
-      console.log('Socket conectado al servidor');
+      console.log('Socket conectado al servidor Railway');
       this.socketConnected = true;
     });
     
     this.socket.on('disconnect', () => {
-      console.log('Socket desconectado del servidor');
+      console.log('Socket desconectado del servidor Railway');
       this.socketConnected = false;
     });
     

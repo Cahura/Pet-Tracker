@@ -2,7 +2,9 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
 import { PetLocationService, PetLocation, PetStatus } from '../services/pet-location';
+import { PetSelectionService, PetData } from '../services/pet-selection.service';
 import { Subscription } from 'rxjs';
+import { io, Socket } from 'socket.io-client';
 
 // Import Mapbox CSS
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -17,26 +19,33 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 export class MapComponent implements OnInit, OnDestroy {
   private map!: mapboxgl.Map;
   private marker!: mapboxgl.Marker;
+  private socket!: Socket;
+  
   public isLoading = true;
   public petLocation: any = null;
   public petMarkerPosition = { x: 0, y: 0 };
-  private currentLocation: [number, number] = [-3.7038, 40.4168]; // Madrid coordinates
+  public currentPet: PetData | null = null;
+  public socketConnected = false;
+  
+  private currentLocation: [number, number] = [-77.0317, -12.1165]; // Lima, Peru coordinates
   private locationSubscription!: Subscription;
   private statusSubscription!: Subscription;
+  private petSubscription!: Subscription;
   private currentPetLocation!: PetLocation;
   private currentPetStatus!: PetStatus;
 
-  constructor(private petLocationService: PetLocationService) {}
+  constructor(
+    private petLocationService: PetLocationService,
+    private petSelectionService: PetSelectionService
+  ) {}
 
   ngOnInit() {
     // Initialize Mapbox configuration
     initializeMapbox();
     this.subscribeToLocationUpdates();
-    
-    // Initialize map after a small delay
-    setTimeout(() => {
-      this.initializeMap();
-    }, 100);
+    this.subscribeToPetUpdates();
+    this.initializeSocket();
+    this.initializeMap();
     
     // Add window resize listener
     window.addEventListener('resize', () => {
@@ -54,6 +63,12 @@ export class MapComponent implements OnInit, OnDestroy {
     }
     if (this.statusSubscription) {
       this.statusSubscription.unsubscribe();
+    }
+    if (this.petSubscription) {
+      this.petSubscription.unsubscribe();
+    }
+    if (this.socket) {
+      this.socket.disconnect();
     }
     if (this.map) {
       this.map.remove();
@@ -215,6 +230,53 @@ export class MapComponent implements OnInit, OnDestroy {
         this.updateStatusDisplay();
       }
     );
+  }
+
+  private subscribeToPetUpdates() {
+    this.petSubscription = this.petSelectionService.selectedPet$.subscribe(pet => {
+      this.currentPet = pet;
+    });
+  }
+
+  private initializeSocket() {
+    // Conectar al servidor Socket.IO
+    this.socket = io('http://localhost:3000');
+    
+    this.socket.on('connect', () => {
+      console.log('Socket conectado al servidor');
+      this.socketConnected = true;
+    });
+    
+    this.socket.on('disconnect', () => {
+      console.log('Socket desconectado del servidor');
+      this.socketConnected = false;
+    });
+    
+    // Escuchar eventos de IMU
+    this.socket.on('imu-data', (data) => {
+      console.log('Datos IMU recibidos:', data);
+      this.updatePetIMUData(data);
+    });
+    
+    // Escuchar eventos de estado de actividad
+    this.socket.on('activity-state', (data) => {
+      console.log('Estado de actividad actualizado:', data);
+      this.updatePetActivityState(data);
+    });
+  }
+
+  private updatePetIMUData(imuData: any) {
+    if (this.currentPet) {
+      this.currentPet.imuData = imuData;
+      this.petSelectionService.updatePetIMUData(this.currentPet.id, imuData);
+    }
+  }
+
+  private updatePetActivityState(activityData: any) {
+    if (this.currentPet) {
+      this.currentPet.activityState = activityData.state;
+      this.petSelectionService.updatePetActivityState(this.currentPet.id, activityData.state);
+    }
   }
 
   private updateMapLocation() {

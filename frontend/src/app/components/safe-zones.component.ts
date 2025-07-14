@@ -13,6 +13,7 @@ export interface SafeZone {
   isActive: boolean;
   createdAt: Date;
   notifications: boolean;
+  petId: number;
 }
 
 export interface LocationAlert {
@@ -129,18 +130,38 @@ export interface LocationAlert {
         </div>
         
         <div class="add-modal-body">
+          <!-- Mini-mapa para seleccionar ubicación -->
+          <div class="location-selector">
+            <h4>Selecciona la ubicación</h4>
+            <div class="mini-map-container">
+              <div class="mini-map" id="addZoneMiniMap">
+                <div class="map-loading">
+                  <i class="fas fa-map-marked-alt"></i>
+                  <p>Cargando mapa...</p>
+                </div>
+              </div>
+              <div class="map-instructions">
+                <i class="fas fa-info-circle"></i>
+                <span>Haz clic en el mapa para seleccionar la ubicación de tu zona segura</span>
+              </div>
+            </div>
+          </div>
+          
           <div class="form-section">
             <div class="form-grid">
-              <div class="form-group full-width">
-                <label>Nombre de la zona</label>
-                <input type="text" [(ngModel)]="newZone.name" 
-                       placeholder="Ej: Casa, Parque, Oficina"
-                       class="elegant-input">
+              <div class="form-group">
+                <label>Mascota</label>
+                <select [(ngModel)]="newZone.petId" class="elegant-select liquid-glass">
+                  <option value="1">Max</option>
+                  <option value="2">Luna</option>
+                  <option value="3">Rocky</option>
+                  <option value="4">Mia</option>
+                </select>
               </div>
               
               <div class="form-group">
                 <label>Tipo de zona</label>
-                <select [(ngModel)]="newZone.type" class="elegant-select">
+                <select [(ngModel)]="newZone.type" class="elegant-select liquid-glass">
                   <option value="home">🏠 Casa</option>
                   <option value="park">🌳 Parque</option>
                   <option value="work">💼 Trabajo</option>
@@ -179,7 +200,7 @@ export interface LocationAlert {
             <i class="fas fa-times"></i>
             <span>Cancelar</span>
           </button>
-          <button class="btn-primary elegant" (click)="saveZone()" [disabled]="!newZone.name">
+          <button class="btn-primary elegant" (click)="saveZone()" [disabled]="!newZone.coordinates">
             <i class="fas fa-check"></i>
             <span>Guardar Zona</span>
           </button>
@@ -914,8 +935,8 @@ export interface LocationAlert {
 
     .close-btn.elegant {
       position: absolute;
-      top: 0;
-      right: 32px;
+      top: 24px;
+      right: 24px;
       width: 36px;
       height: 36px;
       border: none;
@@ -928,6 +949,7 @@ export interface LocationAlert {
       justify-content: center;
       font-size: 16px;
       transition: all 0.3s ease;
+      z-index: 10;
     }
 
     .close-btn.elegant:hover {
@@ -1237,6 +1259,85 @@ export interface LocationAlert {
       box-shadow: none;
     }
 
+    /* Mini-mapa styles */
+    .location-selector {
+      margin-bottom: 24px;
+    }
+
+    .location-selector h4 {
+      color: var(--text-primary);
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+    }
+
+    .mini-map-container {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .mini-map {
+      width: 100%;
+      height: 200px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .map-loading i {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .map-loading p {
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .map-instructions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .map-instructions i {
+      color: var(--primary-color);
+    }
+
+    /* Liquid glass select */
+    .elegant-select.liquid-glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    .elegant-select.liquid-glass option {
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+    }
+
     /* Responsive design */
     @media (max-width: 768px) {
       .edit-modal-content {
@@ -1286,7 +1387,8 @@ export class SafeZonesComponent implements OnInit {
       type: 'home',
       isActive: true,
       createdAt: new Date(),
-      notifications: true
+      notifications: true,
+      petId: 1
     },
     {
       id: '2',
@@ -1296,7 +1398,8 @@ export class SafeZonesComponent implements OnInit {
       type: 'park',
       isActive: true,
       createdAt: new Date(),
-      notifications: true
+      notifications: true,
+      petId: 1
     }
   ];
 
@@ -1323,7 +1426,8 @@ export class SafeZonesComponent implements OnInit {
     name: '',
     type: 'home',
     radius: 50,
-    notifications: true
+    notifications: true,
+    petId: 1
   };
 
   ngOnInit() {
@@ -1385,21 +1489,32 @@ export class SafeZonesComponent implements OnInit {
       name: '',
       type: 'home',
       radius: 50,
-      notifications: true
+      notifications: true,
+      petId: 1
     };
   }
 
+  getZoneName(type: string): string {
+    switch (type) {
+      case 'home': return 'Casa';
+      case 'park': return 'Parque';
+      case 'work': return 'Trabajo';
+      default: return 'Zona Personalizada';
+    }
+  }
+
   saveZone() {
-    if (this.newZone.name) {
+    if (this.newZone.coordinates) {
       const zone: SafeZone = {
         id: Date.now().toString(),
-        name: this.newZone.name,
-        coordinates: this.currentPet?.coordinates || [-3.7038, 40.4168],
+        name: this.getZoneName(this.newZone.type || 'custom'),
+        coordinates: this.newZone.coordinates,
         radius: this.newZone.radius || 50,
         type: this.newZone.type || 'custom',
         isActive: true,
         createdAt: new Date(),
-        notifications: this.newZone.notifications || false
+        notifications: this.newZone.notifications || false,
+        petId: this.newZone.petId || 1
       };
       
       this.safeZones.push(zone);

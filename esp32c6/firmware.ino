@@ -1,323 +1,444 @@
 #include <WiFi.h>
-#include <SocketIOclient.h>
+#include <ArduinoWebsockets.h>
 #include <ArduinoJson.h>
+#include <Wire.h>
+#include <MPU6050.h>
 
-// Configuración Wi-Fi (modificar según tu red)
+// Configuración WiFi
 const char* ssid = "TU_WIFI_SSID";
 const char* password = "TU_WIFI_PASSWORD";
 
-// Configuración Socket.IO (modificar según tu servidor)
-const char* socketIOHost = "TU_BACKEND.up.railway.app";
-const int socketIOPort = 443; // 443 para HTTPS, 80 para HTTP local
-const char* socketIOPath = "/socket.io/?EIO=4";
+// Configuración del servidor Socket.IO
+const char* websockets_server = "192.168.1.100"; // IP de tu servidor Node.js
+const int websockets_port = 3000;
 
-// Configuración del dispositivo
-const String DEVICE_ID = "ESP32C6_001";
-const int PET_ID = 1; // ID de la mascota (Max=1, Luna=2, Charlie=3, Bella=4)
+// Cliente WebSocket
+using namespace websockets;
+WebsocketsClient client;
 
-// Variables de tracking
-bool isTracking = false;
-unsigned long lastSendTime = 0;
-unsigned long trackingInterval = 5000; // 5 segundos por defecto
-float minDistance = 10.0; // 10 metros por defecto
+// Sensor MPU6050
+MPU6050 mpu;
 
-// Simulación GPS (reemplazar por GPS real)
-float currentLat = -12.1165;
-float currentLng = -77.0317;
-float lastLat = 0;
-float lastLng = 0;
+// Variables para almacenar datos del sensor
+struct IMUData {
+  float accelX, accelY, accelZ;
+  float gyroX, gyroY, gyroZ;
+  float temperature;
+  unsigned long timestamp;
+};
 
-// Variables del sistema
-int batteryLevel = 100;
-float gpsAccuracy = 5.0;
-float currentSpeed = 0.0;
-String currentActivity = "resting";
+struct ActivityState {
+  String state;
+  float confidence;
+  float accelMagnitude;
+  float gyroMagnitude;
+  unsigned long timestamp;
+};
 
-// Cliente Socket.IO
-SocketIOclient socketIO;
+// Configuración de mascota
+const int PET_ID = 1; // ID de Max
+String petName = "Max";
 
-// Prototipos de funciones
-void setupWiFi();
-void setupSocketIO();
-void socketIOEvent(socketIOmessageType_t type, uint8_t * payload, size_t length);
-void sendGPSData();
-void simulateGPSMovement();
-float calculateDistance(float lat1, float lng1, float lat2, float lng2);
-void updateBattery();
-void handleStartTracking(String payload);
-void handleStopTracking(String payload);
-void handleSafeZoneConfig(String payload);
+// Variables de control
+unsigned long lastIMUReading = 0;
+unsigned long lastActivitySend = 0;
+unsigned long lastGPSSend = 0;
+unsigned long lastBatterySend = 0;
+
+const unsigned long IMU_INTERVAL = 100;     // Leer IMU cada 100ms
+const unsigned long ACTIVITY_INTERVAL = 3000;  // Enviar actividad cada 3s
+const unsigned long GPS_INTERVAL = 5000;    // Enviar GPS cada 5s
+const unsigned long BATTERY_INTERVAL = 30000; // Enviar batería cada 30s
+
+// Buffer para promediar lecturas del IMU
+const int BUFFER_SIZE = 10;
+IMUData imuBuffer[BUFFER_SIZE];
+int bufferIndex = 0;
+bool bufferFull = false;
+
+// Estado actual de actividad
+ActivityState currentActivity;
+
+// Coordenadas GPS simuladas para Max en Lima
+float latitude = -12.0464;
+float longitude = -77.0428;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("🚀 Iniciando Pet Tracker ESP32C6...");
+  delay(1000);
   
-  // Configurar Wi-Fi
-  setupWiFi();
+  Serial.println("🚀 Iniciando ESP32C6 Pet Tracker con MPU6050...");
   
-  // Configurar Socket.IO
-  setupSocketIO();
+  // Inicializar I2C
+  Wire.begin(21, 22); // SDA, SCL
   
-  Serial.println("✅ Sistema listo. Esperando comandos...");
-}
-
-void loop() {
-  // Mantener conexión Socket.IO
-  socketIO.loop();
-  
-  // Enviar datos GPS si está en tracking
-  if (isTracking) {
-    unsigned long currentTime = millis();
-    
-    if (currentTime - lastSendTime >= trackingInterval) {
-      // Simular movimiento GPS
-      simulateGPSMovement();
-      
-      // Verificar distancia mínima
-      float distance = calculateDistance(lastLat, lastLng, currentLat, currentLng);
-      
-      if (distance >= minDistance || lastLat == 0) {
-        sendGPSData();
-        lastSendTime = currentTime;
-        lastLat = currentLat;
-        lastLng = currentLng;
-      }
+  // Inicializar MPU6050
+  if (!initializeMPU6050()) {
+    Serial.println("❌ Error al inicializar MPU6050");
+    while(1) {
+      delay(1000);
+      Serial.println("🔄 Reintentando inicialización MPU6050...");
+      if (initializeMPU6050()) break;
     }
   }
   
-  // Actualizar batería
-  updateBattery();
+  // Conectar a WiFi
+  connectToWiFi();
   
-  delay(100); // Pequeña pausa para evitar sobrecarga
+  // Configurar cliente WebSocket
+  setupWebSocket();
+  
+  // Inicializar estado de actividad
+  currentActivity = {
+    .state = "lying",
+    .confidence = 0.0,
+    .accelMagnitude = 0.0,
+    .gyroMagnitude = 0.0,
+    .timestamp = millis()
+  };
+  
+  Serial.println("✅ Sistema iniciado correctamente");
+  Serial.println("📡 Enviando datos de Max (Pet ID: 1)");
 }
 
-void setupWiFi() {
+void loop() {
+  // Mantener conexión WebSocket
+  client.poll();
+  
+  unsigned long currentTime = millis();
+  
+  // Leer datos del IMU a alta frecuencia
+  if (currentTime - lastIMUReading >= IMU_INTERVAL) {
+    readIMUData();
+    lastIMUReading = currentTime;
+  }
+  
+  // Enviar estado de actividad
+  if (currentTime - lastActivitySend >= ACTIVITY_INTERVAL) {
+    analyzeAndSendActivity();
+    lastActivitySend = currentTime;
+  }
+  
+  // Enviar datos GPS
+  if (currentTime - lastGPSSend >= GPS_INTERVAL) {
+    sendGPSData();
+    lastGPSSend = currentTime;
+  }
+  
+  // Enviar datos de batería
+  if (currentTime - lastBatterySend >= BATTERY_INTERVAL) {
+    sendBatteryData();
+    lastBatterySend = currentTime;
+  }
+  
+  delay(50); // Pequeña pausa para no saturar el sistema
+}
+
+bool initializeMPU6050() {
+  Serial.println("🔧 Inicializando MPU6050...");
+  
+  mpu.initialize();
+  
+  if (!mpu.testConnection()) {
+    Serial.println("❌ MPU6050 no encontrado");
+    return false;
+  }
+  
+  Serial.println("✅ MPU6050 inicializado correctamente");
+  
+  // Configurar escalas del sensor
+  mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2); // ±2g
+  mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250); // ±250°/s
+  
+  // Configurar filtro pasa-bajos
+  mpu.setDLPFMode(MPU6050_DLPF_BW_20); // 20Hz
+  
+  // Calibrar sensor (opcional - en reposo)
+  Serial.println("🎯 Calibrando MPU6050 (mantener inmóvil 3 segundos)...");
+  delay(3000);
+  
+  return true;
+}
+
+void connectToWiFi() {
+  Serial.print("📡 Conectando a WiFi: ");
+  Serial.println(ssid);
+  
   WiFi.begin(ssid, password);
-  Serial.print("🔌 Conectando a WiFi");
   
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(1000);
     Serial.print(".");
   }
   
   Serial.println();
-  Serial.print("✅ WiFi conectado. IP: ");
+  Serial.println("✅ WiFi conectado!");
+  Serial.print("📍 IP address: ");
   Serial.println(WiFi.localIP());
 }
 
-void setupSocketIO() {
-  // Configurar Socket.IO
-  socketIO.begin(socketIOHost, socketIOPort, socketIOPath);
-  socketIO.onEvent(socketIOEvent);
+void setupWebSocket() {
+  Serial.println("🔌 Configurando WebSocket...");
   
-  Serial.println("🔗 Conectando a Socket.IO...");
-}
-
-void socketIOEvent(socketIOmessageType_t type, uint8_t * payload, size_t length) {
-  switch(type) {
-    case sIOtype_DISCONNECT:
-      Serial.println("🔴 Desconectado de Socket.IO");
-      break;
-      
-    case sIOtype_CONNECT:
-      Serial.println("🟢 Conectado a Socket.IO");
-      // Registrar dispositivo
-      {
-        DynamicJsonDocument doc(1024);
-        doc["deviceId"] = DEVICE_ID;
-        doc["petId"] = PET_ID;
-        doc["timestamp"] = millis();
-        
-        String output;
-        serializeJson(doc, output);
-        socketIO.emit("esp32-connect", output.c_str());
-      }
-      break;
-      
-    case sIOtype_EVENT:
-      {
-        String eventName = (char*)payload;
-        Serial.print("📨 Evento recibido: ");
-        Serial.println(eventName);
-        
-        if (eventName.indexOf("startTracking") >= 0) {
-          handleStartTracking(eventName);
-        } else if (eventName.indexOf("stopTracking") >= 0) {
-          handleStopTracking(eventName);
-        } else if (eventName.indexOf("configureSafeZone") >= 0) {
-          handleSafeZoneConfig(eventName);
-        }
-      }
-      break;
-      
-    case sIOtype_ACK:
-      Serial.println("✅ ACK recibido");
-      break;
-      
-    case sIOtype_ERROR:
-      Serial.print("❌ Error Socket.IO: ");
-      Serial.println((char*)payload);
-      break;
-      
-    default:
-      break;
+  // Configurar eventos del WebSocket
+  client.onMessage([](WebsocketsMessage message) {
+    Serial.print("📨 Mensaje recibido: ");
+    Serial.println(message.data());
+  });
+  
+  client.onEvent([](WebsocketsEvent event, String data) {
+    if (event == WebsocketsEvent::ConnectionOpened) {
+      Serial.println("✅ WebSocket conectado!");
+    } else if (event == WebsocketsEvent::ConnectionClosed) {
+      Serial.println("❌ WebSocket desconectado!");
+    } else if (event == WebsocketsEvent::GotPing) {
+      Serial.println("🏓 Ping recibido");
+    } else if (event == WebsocketsEvent::GotPong) {
+      Serial.println("🏓 Pong recibido");
+    }
+  });
+  
+  // Conectar al servidor
+  String url = "ws://" + String(websockets_server) + ":" + String(websockets_port) + "/socket.io/?EIO=4&transport=websocket";
+  
+  bool connected = client.connect(url);
+  
+  if (connected) {
+    Serial.println("✅ Conectado al servidor WebSocket");
+  } else {
+    Serial.println("❌ Error al conectar WebSocket");
   }
 }
 
-void handleStartTracking(String payload) {
-  Serial.println("▶️ Iniciando tracking...");
+void readIMUData() {
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+  int16_t temp;
   
-  // Parsear configuración del payload si está disponible
-  DynamicJsonDocument doc(1024);
-  deserializeJson(doc, payload);
+  // Leer datos brutos del MPU6050
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  temp = mpu.getTemperature();
   
-  if (doc.containsKey("interval")) {
-    trackingInterval = doc["interval"];
+  // Convertir a unidades físicas
+  IMUData reading;
+  reading.accelX = ax / 16384.0; // Para escala ±2g
+  reading.accelY = ay / 16384.0;
+  reading.accelZ = az / 16384.0;
+  reading.gyroX = gx / 131.0;    // Para escala ±250°/s
+  reading.gyroY = gy / 131.0;
+  reading.gyroZ = gz / 131.0;
+  reading.temperature = temp / 340.0 + 36.53; // Fórmula del datasheet
+  reading.timestamp = millis();
+  
+  // Agregar al buffer circular
+  imuBuffer[bufferIndex] = reading;
+  bufferIndex = (bufferIndex + 1) % BUFFER_SIZE;
+  if (bufferIndex == 0) bufferFull = true;
+  
+  // Debug cada segundo
+  static unsigned long lastDebug = 0;
+  if (millis() - lastDebug > 1000) {
+    Serial.printf("📊 IMU - Accel: (%.2f, %.2f, %.2f)g, Gyro: (%.2f, %.2f, %.2f)°/s, Temp: %.1f°C\n",
+                  reading.accelX, reading.accelY, reading.accelZ,
+                  reading.gyroX, reading.gyroY, reading.gyroZ,
+                  reading.temperature);
+    lastDebug = millis();
   }
-  if (doc.containsKey("minDistance")) {
-    minDistance = doc["minDistance"];
-  }
-  
-  isTracking = true;
-  lastSendTime = 0; // Enviar inmediatamente
-  
-  Serial.print("📍 Tracking activo - Intervalo: ");
-  Serial.print(trackingInterval);
-  Serial.print("ms, Distancia mínima: ");
-  Serial.print(minDistance);
-  Serial.println("m");
 }
 
-void handleStopTracking(String payload) {
-  Serial.println("⏹️ Deteniendo tracking...");
-  isTracking = false;
+void analyzeAndSendActivity() {
+  if (!bufferFull && bufferIndex < 5) return; // Necesitamos al menos 5 lecturas
+  
+  // Calcular promedios del buffer
+  IMUData avgData = {0};
+  int samples = bufferFull ? BUFFER_SIZE : bufferIndex;
+  
+  for (int i = 0; i < samples; i++) {
+    avgData.accelX += imuBuffer[i].accelX;
+    avgData.accelY += imuBuffer[i].accelY;
+    avgData.accelZ += imuBuffer[i].accelZ;
+    avgData.gyroX += imuBuffer[i].gyroX;
+    avgData.gyroY += imuBuffer[i].gyroY;
+    avgData.gyroZ += imuBuffer[i].gyroZ;
+    avgData.temperature += imuBuffer[i].temperature;
+  }
+  
+  avgData.accelX /= samples;
+  avgData.accelY /= samples;
+  avgData.accelZ /= samples;
+  avgData.gyroX /= samples;
+  avgData.gyroY /= samples;
+  avgData.gyroZ /= samples;
+  avgData.temperature /= samples;
+  avgData.timestamp = millis();
+  
+  // Calcular magnitudes vectoriales
+  float accelMagnitude = sqrt(avgData.accelX * avgData.accelX + 
+                             avgData.accelY * avgData.accelY + 
+                             avgData.accelZ * avgData.accelZ);
+  
+  float gyroMagnitude = sqrt(avgData.gyroX * avgData.gyroX + 
+                            avgData.gyroY * avgData.gyroY + 
+                            avgData.gyroZ * avgData.gyroZ);
+  
+  // Determinar estado de actividad
+  ActivityState newActivity = analyzeActivity(accelMagnitude, gyroMagnitude);
+  
+  // Actualizar estado actual
+  currentActivity = newActivity;
+  currentActivity.accelMagnitude = accelMagnitude;
+  currentActivity.gyroMagnitude = gyroMagnitude;
+  currentActivity.timestamp = millis();
+  
+  // Enviar datos del IMU
+  sendIMUData(avgData);
+  
+  // Enviar estado de actividad
+  sendActivityState();
+  
+  Serial.printf("🐕 Actividad detectada: %s (confianza: %.1f%%, accel: %.2f, gyro: %.2f)\n",
+                currentActivity.state.c_str(), 
+                currentActivity.confidence * 100,
+                accelMagnitude, 
+                gyroMagnitude);
 }
 
-void handleSafeZoneConfig(String payload) {
-  Serial.println("🛡️ Configurando zona segura...");
+ActivityState analyzeActivity(float accelMag, float gyroMag) {
+  ActivityState activity;
   
-  // Aquí implementarías la lógica de zona segura
-  // Por ahora solo logueamos la configuración
-  DynamicJsonDocument doc(1024);
-  deserializeJson(doc, payload);
+  // Umbrales ajustados para perros (pueden necesitar calibración)
+  const float LYING_ACCEL_THRESHOLD = 9.5;
+  const float LYING_GYRO_THRESHOLD = 0.5;
   
-  if (doc.containsKey("center") && doc.containsKey("radius")) {
-    Serial.print("Centro: ");
-    Serial.print(doc["center"][0].as<float>());
-    Serial.print(", ");
-    Serial.print(doc["center"][1].as<float>());
-    Serial.print(" - Radio: ");
-    Serial.print(doc["radius"].as<float>());
-    Serial.println("m");
+  const float STANDING_ACCEL_THRESHOLD = 10.5;
+  const float STANDING_GYRO_THRESHOLD = 1.5;
+  
+  const float WALKING_ACCEL_THRESHOLD = 12.0;
+  const float WALKING_GYRO_THRESHOLD = 3.0;
+  
+  const float RUNNING_ACCEL_THRESHOLD = 15.0;
+  const float RUNNING_GYRO_THRESHOLD = 5.0;
+  
+  // Lógica de clasificación
+  if (accelMag >= RUNNING_ACCEL_THRESHOLD && gyroMag >= RUNNING_GYRO_THRESHOLD) {
+    activity.state = "running";
+    activity.confidence = min(0.95f, (accelMag + gyroMag) / 20.0f);
+  } else if (accelMag >= WALKING_ACCEL_THRESHOLD && gyroMag >= WALKING_GYRO_THRESHOLD) {
+    activity.state = "walking";
+    activity.confidence = min(0.90f, (accelMag + gyroMag) / 15.0f);
+  } else if (accelMag >= STANDING_ACCEL_THRESHOLD && gyroMag >= STANDING_GYRO_THRESHOLD) {
+    activity.state = "standing";
+    activity.confidence = min(0.85f, (accelMag + gyroMag) / 12.0f);
+  } else {
+    activity.state = "lying";
+    activity.confidence = max(0.70f, 1.0f - ((accelMag + gyroMag) / 15.0f));
   }
+  
+  return activity;
+}
+
+void sendIMUData(IMUData data) {
+  if (!client.available()) return;
+  
+  // Crear JSON con datos del IMU
+  StaticJsonDocument<512> doc;
+  doc["petId"] = PET_ID;
+  doc["deviceId"] = "ESP32C6_MAX";
+  doc["timestamp"] = data.timestamp;
+  
+  JsonObject accel = doc.createNestedObject("accelerometer");
+  accel["x"] = data.accelX;
+  accel["y"] = data.accelY;
+  accel["z"] = data.accelZ;
+  
+  JsonObject gyro = doc.createNestedObject("gyroscope");
+  gyro["x"] = data.gyroX;
+  gyro["y"] = data.gyroY;
+  gyro["z"] = data.gyroZ;
+  
+  doc["temperature"] = data.temperature;
+  
+  String message;
+  serializeJson(doc, message);
+  
+  // Enviar como evento de Socket.IO
+  String socketIOMessage = "42[\"imu-data\"," + message + "]";
+  client.send(socketIOMessage);
+}
+
+void sendActivityState() {
+  if (!client.available()) return;
+  
+  // Crear JSON con estado de actividad
+  StaticJsonDocument<256> doc;
+  doc["petId"] = PET_ID;
+  doc["deviceId"] = "ESP32C6_MAX";
+  doc["state"] = currentActivity.state;
+  doc["confidence"] = currentActivity.confidence;
+  doc["magnitudes"]["accelerometer"] = currentActivity.accelMagnitude;
+  doc["magnitudes"]["gyroscope"] = currentActivity.gyroMagnitude;
+  doc["timestamp"] = currentActivity.timestamp;
+  
+  String message;
+  serializeJson(doc, message);
+  
+  // Enviar como evento de Socket.IO
+  String socketIOMessage = "42[\"activity-state\"," + message + "]";
+  client.send(socketIOMessage);
 }
 
 void sendGPSData() {
-  DynamicJsonDocument doc(1024);
+  if (!client.available()) return;
   
+  // Simular pequeño movimiento para demo
+  latitude += (random(-10, 11) / 10000.0);
+  longitude += (random(-10, 11) / 10000.0);
+  
+  // Crear JSON con datos GPS
+  StaticJsonDocument<256> doc;
   doc["petId"] = PET_ID;
-  doc["deviceId"] = DEVICE_ID;
-  doc["latitude"] = currentLat;
-  doc["longitude"] = currentLng;
-  doc["battery"] = batteryLevel;
-  doc["accuracy"] = gpsAccuracy;
-  doc["speed"] = currentSpeed;
-  doc["activity"] = currentActivity;
+  doc["deviceId"] = "ESP32C6_MAX";
+  doc["latitude"] = latitude;
+  doc["longitude"] = longitude;
+  doc["altitude"] = 150.0 + random(-5, 6);
+  doc["speed"] = random(0, 5);
+  doc["heading"] = random(0, 360);
+  doc["accuracy"] = 3.0 + (random(-10, 11) / 10.0);
+  doc["satellites"] = random(8, 15);
   doc["timestamp"] = millis();
   
-  String output;
-  serializeJson(doc, output);
+  String message;
+  serializeJson(doc, message);
   
-  socketIO.emit("gps-data", output.c_str());
+  // Enviar como evento de Socket.IO
+  String socketIOMessage = "42[\"location-data\"," + message + "]";
+  client.send(socketIOMessage);
   
-  Serial.print("📍 GPS enviado: ");
-  Serial.print(currentLat, 6);
-  Serial.print(", ");
-  Serial.print(currentLng, 6);
-  Serial.print(" - Batería: ");
-  Serial.print(batteryLevel);
-  Serial.println("%");
+  Serial.printf("📍 GPS enviado: %.6f, %.6f\n", latitude, longitude);
 }
 
-void simulateGPSMovement() {
-  // Simulación simple de movimiento GPS
-  // En implementación real, aquí leerías del módulo GPS
+void sendBatteryData() {
+  if (!client.available()) return;
   
-  static unsigned long lastMoveTime = 0;
-  static float deltaLat = 0.0001;
-  static float deltaLng = 0.0001;
+  // Simular datos de batería
+  static int batteryLevel = 100;
+  batteryLevel = max(20, batteryLevel - random(0, 2)); // Descarga lenta
   
-  if (millis() - lastMoveTime >= 2000) { // Cambiar dirección cada 2 segundos
-    deltaLat = random(-10, 11) * 0.00001; // Movimiento aleatorio pequeño
-    deltaLng = random(-10, 11) * 0.00001;
-    lastMoveTime = millis();
-    
-    // Simular diferentes actividades
-    int activityRandom = random(0, 100);
-    if (activityRandom < 60) {
-      currentActivity = "walking";
-      currentSpeed = random(10, 30) / 10.0; // 1-3 km/h
-    } else if (activityRandom < 80) {
-      currentActivity = "running";
-      currentSpeed = random(30, 60) / 10.0; // 3-6 km/h
-    } else if (activityRandom < 90) {
-      currentActivity = "playing";
-      currentSpeed = random(5, 20) / 10.0; // 0.5-2 km/h
-    } else {
-      currentActivity = "resting";
-      currentSpeed = 0;
-    }
-  }
+  // Crear JSON con datos de batería
+  StaticJsonDocument<256> doc;
+  doc["petId"] = PET_ID;
+  doc["deviceId"] = "ESP32C6_MAX";
+  doc["voltage"] = 3.7 + (batteryLevel / 100.0) * 0.5;
+  doc["percentage"] = batteryLevel;
+  doc["charging"] = false;
+  doc["timestamp"] = millis();
   
-  if (currentActivity != "resting") {
-    currentLat += deltaLat;
-    currentLng += deltaLng;
-    
-    // Mantener dentro de límites razonables para Lima
-    currentLat = constrain(currentLat, -12.2, -12.0);
-    currentLng = constrain(currentLng, -77.1, -76.9);
-  }
-}
-
-float calculateDistance(float lat1, float lng1, float lat2, float lng2) {
-  // Fórmula de Haversine para calcular distancia
-  const float R = 6371000; // Radio de la Tierra en metros
+  String message;
+  serializeJson(doc, message);
   
-  float dLat = radians(lat2 - lat1);
-  float dLng = radians(lng2 - lng1);
+  // Enviar como evento de Socket.IO
+  String socketIOMessage = "42[\"battery-data\"," + message + "]";
+  client.send(socketIOMessage);
   
-  float a = sin(dLat/2) * sin(dLat/2) +
-            cos(radians(lat1)) * cos(radians(lat2)) *
-            sin(dLng/2) * sin(dLng/2);
-  
-  float c = 2 * atan2(sqrt(a), sqrt(1-a));
-  
-  return R * c;
-}
-
-void updateBattery() {
-  static unsigned long lastBatteryUpdate = 0;
-  
-  if (millis() - lastBatteryUpdate >= 60000) { // Actualizar cada minuto
-    if (isTracking) {
-      batteryLevel = max(0, batteryLevel - 1); // Consumo más rápido si está tracking
-    } else {
-      batteryLevel = max(0, batteryLevel - 1); // Consumo lento en standby
-    }
-    
-    lastBatteryUpdate = millis();
-    
-    // Alerta de batería baja
-    if (batteryLevel <= 20) {
-      DynamicJsonDocument doc(512);
-      doc["petId"] = PET_ID;
-      doc["deviceId"] = DEVICE_ID;
-      doc["battery"] = batteryLevel;
-      doc["alert"] = "low_battery";
-      
-      String output;
-      serializeJson(doc, output);
-      socketIO.emit("battery-alert", output.c_str());
-    }
-  }
+  Serial.printf("🔋 Batería: %d%%\n", batteryLevel);
 }

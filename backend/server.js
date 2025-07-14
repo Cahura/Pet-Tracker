@@ -1,3 +1,62 @@
+// Función para analizar datos del IMU y determinar el estado de actividad
+function analyzeIMUData(imuData) {
+  const { accelerometer, gyroscope } = imuData;
+  
+  // Calcular magnitudes vectoriales
+  const accelMagnitude = Math.sqrt(
+    Math.pow(accelerometer.x, 2) + 
+    Math.pow(accelerometer.y, 2) + 
+    Math.pow(accelerometer.z, 2)
+  );
+  
+  const gyroMagnitude = Math.sqrt(
+    Math.pow(gyroscope.x, 2) + 
+    Math.pow(gyroscope.y, 2) + 
+    Math.pow(gyroscope.z, 2)
+  );
+
+  // Umbrales para determinar actividad (ajustables según calibración)
+  const thresholds = {
+    lying: { accel: 9.5, gyro: 0.3 },     // Quieto/acostado
+    standing: { accel: 10.5, gyro: 1.0 }, // De pie/parado
+    walking: { accel: 12.0, gyro: 2.5 },  // Caminando
+    running: { accel: 15.0, gyro: 4.0 }   // Corriendo
+  };
+
+  // Determinar estado basado en magnitudes
+  let state = 'lying';
+  let confidence = 0.0;
+
+  if (accelMagnitude >= thresholds.running.accel && gyroMagnitude >= thresholds.running.gyro) {
+    state = 'running';
+    confidence = Math.min(0.95, (accelMagnitude + gyroMagnitude) / 20);
+  } else if (accelMagnitude >= thresholds.walking.accel && gyroMagnitude >= thresholds.walking.gyro) {
+    state = 'walking';
+    confidence = Math.min(0.90, (accelMagnitude + gyroMagnitude) / 15);
+  } else if (accelMagnitude >= thresholds.standing.accel && gyroMagnitude >= thresholds.standing.gyro) {
+    state = 'standing';
+    confidence = Math.min(0.85, (accelMagnitude + gyroMagnitude) / 12);
+  } else {
+    state = 'lying';
+    confidence = Math.max(0.70, 1 - ((accelMagnitude + gyroMagnitude) / 15));
+  }
+
+  console.log(`📊 IMU Analysis - Accel: ${accelMagnitude.toFixed(2)}, Gyro: ${gyroMagnitude.toFixed(2)}, State: ${state}, Confidence: ${(confidence * 100).toFixed(1)}%`);
+
+  return {
+    state,
+    confidence,
+    magnitudes: {
+      accelerometer: accelMagnitude,
+      gyroscope: gyroMagnitude
+    },
+    rawData: {
+      accelerometer,
+      gyroscope
+    }
+  };
+}
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -89,6 +148,78 @@ io.on('connection', (socket) => {
         accuracy: data.accuracy || 5,
         speed: data.speed || 0,
         activity: data.activity || 'unknown'
+      });
+    }
+  });
+
+  // Recibir datos del IMU (acelerómetro y giroscopio)
+  socket.on('imu-data', (data) => {
+    console.log(`🔄 Datos IMU recibidos:`, data);
+    
+    if (data.petId && data.accelerometer && data.gyroscope) {
+      // Procesar datos del IMU para determinar actividad
+      const activityState = analyzeIMUData(data);
+      
+      // Almacenar datos temporalmente
+      const petData = petsData.get(data.petId) || {};
+      petData.imuData = {
+        accelerometer: data.accelerometer,
+        gyroscope: data.gyroscope,
+        temperature: data.temperature,
+        activityState: activityState,
+        timestamp: new Date().toISOString()
+      };
+      petsData.set(data.petId, petData);
+
+      // Enviar datos procesados a todos los clientes web
+      socket.broadcast.emit('pet-imu-update', {
+        petId: data.petId,
+        imuData: petData.imuData,
+        activityState: activityState,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Recibir estado de actividad procesado del ESP32C6
+  socket.on('activity-state', (data) => {
+    console.log(`🐕 Estado de actividad recibido:`, data);
+    
+    // Validar datos de actividad
+    if (data.petId && data.state) {
+      // Almacenar estado temporalmente
+      const petData = petsData.get(data.petId) || {};
+      petData.activityState = data.state;
+      petData.confidence = data.confidence || 0.8;
+      petData.timestamp = new Date().toISOString();
+      petsData.set(data.petId, petData);
+
+      // Enviar a todos los clientes web
+      socket.broadcast.emit('pet-activity-update', {
+        petId: data.petId,
+        activityState: data.state,
+        confidence: data.confidence,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Recibir datos de batería del ESP32C6
+  socket.on('battery-data', (data) => {
+    console.log(`🔋 Datos de batería recibidos:`, data);
+    
+    if (data.petId && data.batteryLevel !== undefined) {
+      // Almacenar datos temporalmente
+      const petData = petsData.get(data.petId) || {};
+      petData.batteryLevel = data.batteryLevel;
+      petData.timestamp = new Date().toISOString();
+      petsData.set(data.petId, petData);
+
+      // Enviar a todos los clientes web
+      socket.broadcast.emit('pet-battery-update', {
+        petId: data.petId,
+        batteryLevel: data.batteryLevel,
+        timestamp: new Date().toISOString()
       });
     }
   });

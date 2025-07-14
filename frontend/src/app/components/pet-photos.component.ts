@@ -499,13 +499,18 @@ export class PetPhotosComponent {
   ];
 
   getMainPhoto(): string {
+    if (this.currentPet?.photoUrl) {
+      return this.currentPet.photoUrl;
+    }
+    
     if (this.currentPet) {
       const petPhoto = this.petPhotos.find(photo => photo.petId === this.currentPet!.id);
       if (petPhoto) {
         return petPhoto.url;
       }
     }
-    return '/assets/pet-avatar.svg';
+    
+    return '/assets/pet-icon.svg';
   }
 
   addPhoto() {

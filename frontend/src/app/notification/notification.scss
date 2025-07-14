@@ -2,24 +2,24 @@
 
 .notifications-container {
   position: fixed;
-  top: 120px; // Más abajo para no invadir el status island
-  right: 24px;
+  top: 80px; // Posición en la parte superior
+  left: 50%;
+  transform: translateX(-50%); // Centrar horizontalmente
   z-index: 9999;
-  max-width: 380px; // Más pequeño para no interferir
-  width: 100%;
+  max-width: 400px;
+  width: 90%;
   pointer-events: none;
   
-  // Responsivo - asegurar que no invada elementos del mapa
+  // Responsivo
   @media (max-width: 768px) {
-    top: 140px;
-    right: 15px;
-    max-width: 340px;
+    top: 70px;
+    max-width: 350px;
+    width: 95%;
   }
   
   @media (max-width: 480px) {
-    top: 150px;
-    right: 10px;
-    max-width: 300px;
+    top: 60px;
+    max-width: 320px;
   }
   
   &.has-notifications {

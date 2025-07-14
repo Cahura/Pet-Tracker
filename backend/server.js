@@ -340,8 +340,8 @@ io.on('connection', (socket) => {
 });
 
 // Iniciar servidor
-server.listen(PORT, () => {
-  console.log(`🚀 Pet Tracker Backend iniciado en puerto ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Pet Tracker Backend iniciado en puerto ${PORT} (0.0.0.0)`);
   console.log(`🌐 Servidor Socket.IO listo para conexiones`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
 });

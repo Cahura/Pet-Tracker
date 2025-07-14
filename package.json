@@ -15,8 +15,8 @@
     "install-backend": "cd backend && npm ci"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

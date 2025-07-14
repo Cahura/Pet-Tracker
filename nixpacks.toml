@@ -1,6 +1,10 @@
 [providers]
 nodejs = {}
 
+[variables]
+NODE_VERSION = "20.19.0"
+NODE_ENV = "production"
+
 [build]
 cmds = [
     "npm install",
@@ -9,9 +13,6 @@ cmds = [
 
 [start]
 cmd = "npm run railway:start"
-
-[variables]
-NODE_ENV = "production"
 
 [phases.build]
 cmds = [

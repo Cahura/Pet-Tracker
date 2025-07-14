@@ -1,5 +1,5 @@
 # Multi-stage build para Pet Tracker
-FROM node:18-alpine AS frontend-build
+FROM node:20-alpine AS frontend-build
 
 # Build del frontend Angular
 WORKDIR /app/frontend
@@ -10,7 +10,7 @@ COPY frontend/ ./
 RUN npm run build:prod
 
 # Stage para el backend
-FROM node:18-alpine AS backend
+FROM node:20-alpine AS backend
 
 WORKDIR /app
 

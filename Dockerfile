@@ -24,6 +24,14 @@ COPY backend/ ./
 # Copiar los archivos built del frontend (Angular 18 genera en dist/pet-tracker/browser/)
 COPY --from=frontend-build /app/frontend/dist/pet-tracker/browser ./public
 
+# Verificar que los archivos se copiaron correctamente
+RUN ls -la /app/public/ && \
+    echo "✅ Archivos frontend copiados:" && \
+    ls -la /app/public/
+
+# Configurar variables de entorno
+ENV NODE_ENV=production
+
 # Crear usuario no-root para seguridad
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001

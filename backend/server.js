@@ -74,7 +74,9 @@ const io = socketIo(server, {
       "http://localhost:4200",
       "https://pet-tracker-frontend.vercel.app",
       "https://pet-tracker-*.vercel.app",
-      process.env.FRONTEND_URL
+      process.env.FRONTEND_URL,
+      process.env.RAILWAY_STATIC_URL,
+      process.env.RAILWAY_PUBLIC_DOMAIN
     ].filter(Boolean),
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
@@ -91,7 +93,9 @@ app.use(cors({
     "http://localhost:4200",
     "https://pet-tracker-frontend.vercel.app",
     "https://pet-tracker-*.vercel.app",
-    process.env.FRONTEND_URL
+    process.env.FRONTEND_URL,
+    process.env.RAILWAY_STATIC_URL,
+    process.env.RAILWAY_PUBLIC_DOMAIN
   ].filter(Boolean),
   credentials: true
 }));
@@ -100,6 +104,7 @@ app.use(express.json());
 
 // Servir archivos estáticos del frontend en producción
 if (process.env.NODE_ENV === 'production') {
+  console.log('🌐 Serving static files from:', path.join(__dirname, 'public'));
   app.use(express.static(path.join(__dirname, 'public')));
   
   // Manejar rutas de Angular (SPA routing)
@@ -108,6 +113,7 @@ if (process.env.NODE_ENV === 'production') {
     if (req.path.startsWith('/health') || req.path.startsWith('/api/')) {
       return next();
     }
+    console.log('🔄 Serving SPA route:', req.path);
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 }

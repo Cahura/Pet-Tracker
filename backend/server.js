@@ -58,14 +58,74 @@ function analyzeIMUData(imuData) {
 }
 
 const express = require('express');
+
 const http = require('http');
 const socketIo = require('socket.io');
+const WebSocket = require('ws');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
+
 const server = http.createServer(app);
+
+// --- WebSocket puro para ESP32C6 ---
+const wss = new WebSocket.Server({ server, path: '/ws-pet' });
+
+// Manejo de conexiones WebSocket puro
+wss.on('connection', (ws, req) => {
+  console.log('🔗 ESP32C6 conectado por WebSocket puro');
+
+  ws.on('message', (message) => {
+    try {
+      // Espera mensajes JSON del ESP32C6
+      const data = JSON.parse(message);
+      // Determinar tipo de mensaje por campo o topic
+      if (data.type === 'location-data' || data.latitude) {
+        // Reenviar a web como pet-location-update
+        io.emit('pet-location-update', {
+          petId: data.petId || '1',
+          coordinates: [data.longitude, data.latitude],
+          battery: data.percentage || 100,
+          timestamp: new Date().toISOString(),
+          accuracy: data.accuracy || 5,
+          speed: data.speed || 0,
+          activity: data.activity || 'unknown'
+        });
+      } else if (data.type === 'activity-state' || data.state) {
+        // Reenviar a web como pet-activity-update
+        io.emit('pet-activity-update', {
+          petId: data.petId || '1',
+          activityState: data.state,
+          confidence: data.confidence,
+          timestamp: new Date().toISOString()
+        });
+      } else if (data.type === 'imu-data' || data.accelerometer) {
+        // Reenviar a web como pet-imu-update
+        io.emit('pet-imu-update', {
+          petId: data.petId || '1',
+          imuData: data,
+          activityState: data.state,
+          timestamp: new Date().toISOString()
+        });
+      } else if (data.type === 'battery-data' || data.percentage) {
+        // Reenviar a web como pet-battery-update
+        io.emit('pet-battery-update', {
+          petId: data.petId || '1',
+          batteryLevel: data.percentage,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      console.error('❌ Error procesando mensaje WS puro:', err);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('🔌 ESP32C6 WebSocket puro desconectado');
+  });
+});
 
 // Configuración CORS para Railway
 const io = socketIo(server, {

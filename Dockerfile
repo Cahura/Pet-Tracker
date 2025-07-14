@@ -4,10 +4,10 @@ FROM node:18-alpine AS frontend-build
 # Build del frontend Angular
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --only=production --silent
+RUN npm ci --silent
 
 COPY frontend/ ./
-RUN npm run build
+RUN npm run build:prod
 
 # Stage para el backend
 FROM node:18-alpine AS backend
@@ -21,8 +21,8 @@ RUN npm ci --only=production --silent
 # Copiar código del backend
 COPY backend/ ./
 
-# Copiar los archivos built del frontend
-COPY --from=frontend-build /app/frontend/dist ./public
+# Copiar los archivos built del frontend (Angular 18 genera en dist/pet-tracker/browser/)
+COPY --from=frontend-build /app/frontend/dist/pet-tracker/browser ./public
 
 # Crear usuario no-root para seguridad
 RUN addgroup -g 1001 -S nodejs

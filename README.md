@@ -1,4 +1,4 @@
-# Pet Tracker – Sistema de Seguimiento GPS en Tiempo Real
+# Pet Tracker – Sistema de Seguimiento GPS + IMU en Tiempo Real
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/Cahura/pet-tracker/main/frontend/public/pet-icon.svg" alt="Pet Tracker Logo" width="120" height="120">
@@ -8,36 +8,44 @@
   ![ESP32](https://img.shields.io/badge/ESP32-000000?style=for-the-badge&logo=espressif&logoColor=white)
   ![Railway](https://img.shields.io/badge/Railway-131415?style=for-the-badge&logo=railway&logoColor=white)
   ![Mapbox](https://img.shields.io/badge/Mapbox-000000?style=for-the-badge&logo=mapbox&logoColor=white)
+  ![MPU6050](https://img.shields.io/badge/MPU6050-FF6B35?style=for-the-badge&logo=arduino&logoColor=white)
 </div>
 
 ## 🎯 Descripción del Proyecto
 
-**Pet Tracker** es un sistema integral de seguimiento GPS en tiempo real para mascotas, desarrollado desde la perspectiva de **Ingeniería Electrónica** con enfoque en IoT y comunicaciones. El proyecto integra hardware especializado (ESP32C6), protocolos de comunicación en tiempo real (Socket.IO) y una interfaz web moderna para crear una solución completa de monitoreo.
+**Pet Tracker** es un sistema integral de seguimiento GPS + IMU en tiempo real para mascotas, desarrollado desde la perspectiva de **Ingeniería Electrónica** con enfoque en IoT y comunicaciones. El proyecto integra hardware especializado (ESP32C6 + MPU6050), protocolos de comunicación en tiempo real (Socket.IO) y una interfaz web moderna para crear una solución completa de monitoreo con detección de actividad.
 
 ### 🔧 Enfoque de Ingeniería Electrónica
 
 Este proyecto demuestra competencias técnicas en:
 - **Sistemas Embebidos**: Programación de microcontroladores ESP32C6 con WiFi integrado
+- **Sensores IMU**: Integración del MPU6050 (acelerómetro y giroscopio de 6 ejes)
+- **Procesamiento de Señales**: Análisis de datos IMU para detección de actividad
 - **Protocolos IoT**: Implementación de comunicación WebSocket para tiempo real
 - **Integración Hardware-Software**: Puente entre dispositivos físicos y aplicaciones web
 - **Procesamiento de Señales GPS**: Manejo y filtrado de coordenadas geográficas
 - **Arquitectura de Sistemas**: Diseño de comunicación distribuida entre múltiples componentes
+- **Análisis de Patrones**: Algoritmos de clasificación de actividad basados en IMU
 
 ### 🏗️ Arquitectura del Sistema
 
 ```
-[ESP32C6 + GPS] ←--WiFi--→ [Socket.IO Server] ←--WebSocket--→ [Angular Frontend]
-        │                          │                              │
-   • GPS Module                • Railway Cloud               • MapBox Maps
-   • WiFi Radio               • Real-time WS                • User Interface
-   • Battery Monitor          • Data Processing             • Notifications
-   • Status LEDs              • Device Management           • Route History
+[ESP32C6 + GPS + MPU6050] ←--WiFi--→ [Socket.IO Server] ←--WebSocket--→ [Angular Frontend]
+        │                              │                                  │
+   • GPS Module                    • Railway Cloud                   • MapBox Maps
+   • MPU6050 (IMU 6-axis)         • Real-time WS                   • User Interface
+   • WiFi Radio                   • IMU Data Processing            • Activity Monitor
+   • Battery Monitor              • Activity Classification        • Notifications
+   • Status LEDs                  • Device Management              • Route History
 ```
 
 ## 🚀 Características Técnicas
 
 - **📡 Comunicación en Tiempo Real** - WebSocket con Socket.IO para latencia mínima
 - **🛰️ Posicionamiento GPS** - Coordenadas precisas con filtrado de ruido
+- **🔄 Sensor IMU MPU6050** - Acelerómetro y giroscopio de 6 ejes para detección de actividad
+- **🐕 Detección de Actividad** - Estados: acostado, parado, caminando, corriendo
+- **📊 Análisis de Movimiento** - Procesamiento de magnitudes vectoriales IMU
 - **🗺️ Visualización Cartográfica** - MapBox GL JS con renderizado vectorial
 - **📱 Interfaz Responsiva** - Adaptable a dispositivos móviles y desktop
 - **🔋 Monitoreo Energético** - Control del estado de batería del dispositivo
@@ -48,6 +56,9 @@ Este proyecto demuestra competencias técnicas en:
 
 ### Hardware
 - **ESP32C6** - Microcontrolador con WiFi 6 y Bluetooth 5.0
+- **MPU6050** - Sensor IMU de 6 ejes (acelerómetro + giroscopio)
+- **Módulo GPS** - Receptor de posicionamiento global
+- **Batería LiPo** - Alimentación portátil con monitoreo de carga
 - **Módulo GPS** - Receptor para coordenadas geográficas
 - **Batería LiPo** - Alimentación portátil con indicador de nivel
 - **Sensores** - Acelerómetro y giroscopio para análisis de movimiento
@@ -112,12 +123,48 @@ ng serve  # Desarrollo en puerto 4200
 ng build --prod  # Build para producción
 ```
 
-### 3. Configuración del ESP32C6
+### 3. Configuración del ESP32C6 + MPU6050
 ```cpp
 // En esp32c6/firmware.ino
+#include <Wire.h>
+#include <MPU6050.h>
+#include <WiFi.h>
+#include <SocketIOclient.h>
+
+// Configuración WiFi
 const char* ssid = "TU_WIFI_SSID";
 const char* password = "TU_WIFI_PASSWORD";
 const char* socketURL = "https://tu-backend.railway.app";
+
+// Configuración MPU6050
+MPU6050 mpu;
+const int MPU_ADDRESS = 0x68;
+const int SAMPLE_RATE = 100; // Hz
+
+// Pines de conexión
+#define SDA_PIN 21
+#define SCL_PIN 22
+#define LED_PIN 2
+
+// Variables para procesamiento IMU
+float ax, ay, az;  // Acelerómetro
+float gx, gy, gz;  // Giroscopio
+float temperature;
+```
+
+### 4. Configuración Hardware
+```
+ESP32C6 ←→ MPU6050 (I2C):
+  Pin 21 (SDA) → SDA
+  Pin 22 (SCL) → SCL  
+  3.3V → VCC
+  GND → GND
+  
+ESP32C6 ←→ GPS Module:
+  Pin 16 (RX) → TX
+  Pin 17 (TX) → RX
+  3.3V → VCC
+  GND → GND
 ```
 
 ### 4. Despliegue en Railway (Backend)
@@ -138,15 +185,42 @@ npm run build
 ## 🔌 Comunicación Socket.IO
 
 ### Eventos del ESP32C6 → Backend
-- `registerDevice` - Registro inicial del dispositivo
-- `gpsData` - Envío de coordenadas GPS
-- `batteryLevel` - Nivel de batería actual
-- `deviceStatus` - Estado del dispositivo
+- `esp32-connect` - Conexión inicial del dispositivo ESP32C6
+- `gps-data` - Envío de coordenadas GPS en tiempo real
+- `imu-data` - Datos del MPU6050 (acelerómetro + giroscopio)
+- `activity-state` - Estado de actividad clasificado
+- `battery-level` - Nivel de batería actual
+- `device-status` - Estado general del dispositivo
 
 ### Eventos del Backend → Frontend
-- `deviceRegistered` - Confirmación de registro
-- `locationUpdate` - Nueva ubicación GPS
-- `batteryUpdate` - Actualización de batería
+- `pet-location-update` - Nueva ubicación GPS de la mascota
+- `pet-imu-update` - Datos IMU procesados con actividad
+- `pet-activity-update` - Cambio de estado de actividad
+- `pet-battery-update` - Actualización de batería
+- `connection-status` - Estado de conexión del dispositivo
+
+### Estructura de Datos IMU
+```javascript
+// Evento: imu-data
+{
+  "petId": 1,
+  "accelerometer": { "x": 0.12, "y": 9.81, "z": 0.03 },
+  "gyroscope": { "x": 0.001, "y": 0.002, "z": 0.000 },
+  "temperature": 23.5,
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+
+// Evento: activity-state  
+{
+  "petId": 1,
+  "state": "walking",
+  "confidence": 0.87,
+  "magnitudes": {
+    "accelerometer": 12.34,
+    "gyroscope": 2.56
+  }
+}
+```
 - `trackingStarted/Stopped` - Control de seguimiento
 
 ## 🗺️ Integración con MapBox
@@ -245,3 +319,74 @@ Especializado en sistemas embebidos, IoT y comunicaciones en tiempo real.
 <div align="center">
   <strong>Pet Tracker</strong> - Tecnología al servicio del cuidado animal 🐾
 </div>
+
+## 🔄 Sistema de Detección de Actividad con MPU6050
+
+### 📊 Especificaciones del MPU6050
+- **Acelerómetro**: 3 ejes (X, Y, Z) con rango configurable ±2g a ±16g
+- **Giroscopio**: 3 ejes (X, Y, Z) con rango configurable ±250°/s a ±2000°/s
+- **Comunicación**: I2C (TWI) con dirección 0x68 o 0x69
+- **Frecuencia de muestreo**: Hasta 8kHz (configurable)
+- **Resolución**: 16 bits por canal
+- **Temperatura integrada**: Sensor térmico interno
+
+### 🧠 Algoritmo de Clasificación de Actividad
+
+El sistema analiza las magnitudes vectoriales del acelerómetro y giroscopio para determinar el estado de actividad:
+
+```cpp
+// Cálculo de magnitudes vectoriales
+float accel_magnitude = sqrt(ax² + ay² + az²);
+float gyro_magnitude = sqrt(gx² + gy² + gz²);
+
+// Clasificación de estados
+if (accel_magnitude >= 15.0 && gyro_magnitude >= 4.0) {
+    state = "running";       // Corriendo
+} else if (accel_magnitude >= 12.0 && gyro_magnitude >= 2.5) {
+    state = "walking";       // Caminando  
+} else if (accel_magnitude >= 10.5 && gyro_magnitude >= 1.0) {
+    state = "standing";      // Parado
+} else {
+    state = "lying";         // Acostado/Quieto
+}
+```
+
+### 📈 Estados de Actividad Detectados
+
+| Estado | Acelerómetro | Giroscopio | Descripción |
+|--------|-------------|------------|-------------|
+| **🛌 Lying** | < 10.5 g | < 1.0 °/s | Mascota acostada o muy quieta |
+| **🧍 Standing** | 10.5-12.0 g | 1.0-2.5 °/s | Mascota parada o movimientos lentos |
+| **🚶 Walking** | 12.0-15.0 g | 2.5-4.0 °/s | Mascota caminando a ritmo normal |
+| **🏃 Running** | > 15.0 g | > 4.0 °/s | Mascota corriendo o muy activa |
+
+### 🔍 Procesamiento de Datos IMU
+
+1. **Adquisición**: Lectura de 6 canales (3 acelerómetro + 3 giroscopio) a 100Hz
+2. **Filtrado**: Aplicación de filtro paso bajo para eliminar ruido
+3. **Calibración**: Compensación de offset y escalado
+4. **Análisis**: Cálculo de magnitudes vectoriales y clasificación
+5. **Transmisión**: Envío de estado y datos raw vía Socket.IO
+
+### 📡 Protocolo de Comunicación IMU
+
+```javascript
+// Estructura de datos IMU enviados por ESP32C6
+{
+  "petId": 1,
+  "timestamp": "2025-01-15T10:30:00Z",
+  "accelerometer": {
+    "x": 0.12,
+    "y": 9.81,
+    "z": 0.03
+  },
+  "gyroscope": {
+    "x": 0.001,
+    "y": 0.002,
+    "z": 0.000
+  },
+  "temperature": 23.5,
+  "activityState": "walking",
+  "confidence": 0.87
+}
+```

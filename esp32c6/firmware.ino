@@ -1,19 +1,110 @@
 #include <WiFi.h>
-#include <ArduinoWebsockets.h>
+#include <WebSocketsClient.h>
+#include <ArduinoJson.h>
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+
+// Configuración WiFi
+const char* ssid = "JARVIS NET";
+const char* password = "JaRvIs2019";
+
+// Configuración WebSocket (Railway)
+const char* ws_host = "pet-tracker-production.up.railway.app";
+const int ws_port = 443; // 443 para wss
+const char* ws_path = "/ws";
+
+WebSocketsClient ws;
+Adafruit_MPU6050 mpu;
+unsigned long lastSend = 0;
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  if (type == WStype_CONNECTED) Serial.println("✅ WebSocket conectado!");
+  if (type == WStype_DISCONNECTED) Serial.println("❌ WebSocket desconectado!");
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\nWiFi conectado!");
+
+  if (!mpu.begin()) {
+    Serial.println("No se pudo encontrar un MPU6050."); while (1) delay(10);
+  }
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+  mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+  ws.beginSSL(ws_host, ws_port, ws_path);
+  ws.onEvent(webSocketEvent);
+}
+
+void loop() {
+  ws.loop();
+  unsigned long now = millis();
+  if (now - lastSend > 5000) { // Cada 5 segundos
+    sendPetData();
+    lastSend = now;
+  }
+}
+
+void sendPetData() {
+  // Simula GPS
+  float latitude = -12.0464 + random(-10, 10) / 10000.0;
+  float longitude = -77.0428 + random(-10, 10) / 10000.0;
+
+  // IMU
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  // Estado mascota
+  float movementThreshold = 10.5;
+  float magnitude = sqrt(a.acceleration.x * a.acceleration.x +
+                         a.acceleration.y * a.acceleration.y +
+                         a.acceleration.z * a.acceleration.z);
+  String activity = (magnitude > movementThreshold) ? "parado" : "echado";
+
+  // JSON
+  StaticJsonDocument<512> doc;
+  doc["petId"] = 1;
+  doc["deviceId"] = "ESP32C6_MAX";
+  doc["timestamp"] = millis();
+  JsonArray coords = doc.createNestedArray("coordinates");
+  coords.add(longitude);
+  coords.add(latitude);
+  doc["battery"] = 100;
+  doc["activity"] = activity;
+  JsonObject accel = doc.createNestedObject("accelerometer");
+  accel["x"] = a.acceleration.x;
+  accel["y"] = a.acceleration.y;
+  accel["z"] = a.acceleration.z;
+  JsonObject gyro = doc.createNestedObject("gyroscope");
+  gyro["x"] = g.gyro.x;
+  gyro["y"] = g.gyro.y;
+  gyro["z"] = g.gyro.z;
+  doc["temperature"] = temp.temperature;
+
+  String message;
+  serializeJson(doc, message);
+  ws.sendTXT(message);
+  Serial.println("📤 Enviado: " + message);
+}#include <WiFi.h>
+#include <WebSocketsClient.h>
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <MPU6050.h>
 
 // Configuración WiFi
-const char* ssid = "TU_WIFI_SSID";
-const char* password = "TU_WIFI_PASSWORD";
+const char* ssid = "XXXXXXXX";
+const char* password = "XXXXXXXX";
 
-// Configuración del servidor WebSocket puro para Railway
+// Configuración del servidor Socket.IO para Railway
 const char* websockets_server = "pet-tracker-production.up.railway.app";
+const int websockets_port = 443;
 
-// Cliente WebSocket puro
-using namespace websockets;
-WebsocketsClient wsClient;
+// Cliente WebSocket
+WebSocketsClient client;
 
 // Sensor MPU6050
 MPU6050 mpu;
@@ -43,11 +134,13 @@ unsigned long lastIMUReading = 0;
 unsigned long lastActivitySend = 0;
 unsigned long lastGPSSend = 0;
 unsigned long lastBatterySend = 0;
+unsigned long lastHeartbeat = 0;
 
 const unsigned long IMU_INTERVAL = 100;     // Leer IMU cada 100ms
 const unsigned long ACTIVITY_INTERVAL = 3000;  // Enviar actividad cada 3s
 const unsigned long GPS_INTERVAL = 5000;    // Enviar GPS cada 5s
 const unsigned long BATTERY_INTERVAL = 30000; // Enviar batería cada 30s
+const unsigned long HEARTBEAT_INTERVAL = 25000; // Heartbeat cada 25s
 
 // Buffer para promediar lecturas del IMU
 const int BUFFER_SIZE = 10;
@@ -62,16 +155,97 @@ ActivityState currentActivity;
 float latitude = -12.0464;
 float longitude = -77.0428;
 
+// Variables de conexión
+bool isSocketConnected = false;
+bool isSocketAuthenticated = false;
+unsigned long lastReconnectAttempt = 0;
+const unsigned long RECONNECT_INTERVAL = 10000; // Reconectar cada 10s
+
 // --- Manejador de eventos para WebSocketsClient ---
-void onWebSocketEvent(WebsocketsEvent event, String data) {
-  if (event == WebsocketsEvent::ConnectionOpened) {
-    Serial.println("✅ WebSocket puro conectado!");
-  } else if (event == WebsocketsEvent::ConnectionClosed) {
-    Serial.println("❌ WebSocket puro desconectado!");
-  } else if (event == WebsocketsEvent::GotPing) {
-    Serial.println("🏓 Ping recibido");
-  } else if (event == WebsocketsEvent::GotPong) {
-    Serial.println("🏓 Pong recibido");
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.println("❌ WebSocket desconectado!");
+      isSocketConnected = false;
+      isSocketAuthenticated = false;
+      break;
+      
+    case WStype_CONNECTED:
+      Serial.printf("✅ WebSocket conectado a: %s\n", payload);
+      isSocketConnected = true;
+      
+      // Enviar handshake de Socket.IO
+      client.sendTXT("40"); // Socket.IO connect packet
+      
+      // Autenticación del dispositivo
+      sendDeviceAuth();
+      break;
+      
+    case WStype_TEXT:
+      handleSocketIOMessage((char*)payload);
+      break;
+      
+    case WStype_BIN:
+      Serial.printf("📦 Datos binarios recibidos: %u bytes\n", length);
+      break;
+      
+    case WStype_PING:
+      Serial.println("🏓 Ping recibido");
+      break;
+      
+    case WStype_PONG:
+      Serial.println("🏓 Pong recibido");
+      break;
+      
+    case WStype_ERROR:
+      Serial.printf("❌ Error WebSocket: %s\n", payload);
+      break;
+      
+    default:
+      break;
+  }
+}
+
+void handleSocketIOMessage(const char* payload) {
+  Serial.printf("📨 Mensaje Socket.IO: %s\n", payload);
+  
+  // Parsear mensajes de Socket.IO
+  if (strncmp(payload, "40", 2) == 0) {
+    Serial.println("✅ Handshake completado");
+    isSocketAuthenticated = true;
+  } else if (strncmp(payload, "41", 2) == 0) {
+    Serial.println("❌ Handshake fallido");
+  } else if (strncmp(payload, "42", 2) == 0) {
+    // Mensaje de evento
+    Serial.println("📧 Evento recibido del servidor");
+  } else if (strncmp(payload, "3", 1) == 0) {
+    // Heartbeat
+    Serial.println("💓 Heartbeat recibido");
+  }
+}
+
+void sendDeviceAuth() {
+  if (isSocketConnected) {
+    Serial.println("🔑 Enviando autenticación del dispositivo...");
+    
+    StaticJsonDocument<256> doc;
+    doc["deviceId"] = "ESP32C6_MAX";
+    doc["petId"] = PET_ID;
+    doc["deviceType"] = "tracker";
+    doc["version"] = "1.0.0";
+    
+    String message;
+    serializeJson(doc, message);
+    
+    String socketIOMessage = "42[\"device-auth\"," + message + "]";
+    client.sendTXT(socketIOMessage);
+  }
+}
+
+void sendHeartbeat() {
+  if (isSocketConnected) {
+    client.sendTXT("2"); // Socket.IO ping
+    Serial.println("💓 Heartbeat enviado");
   }
 }
 
@@ -97,7 +271,7 @@ void setup() {
   // Conectar a WiFi
   connectToWiFi();
 
-  // Configurar cliente WebSocket puro
+  // Configurar cliente WebSocket
   setupWebSocket();
 
   // Inicializar estado de actividad
@@ -115,9 +289,16 @@ void setup() {
 
 void loop() {
   // Mantener conexión WebSocket
-  wsClient.poll();
+  client.loop();
 
   unsigned long currentTime = millis();
+
+  // Verificar reconexión si es necesario
+  if (!isSocketConnected && currentTime - lastReconnectAttempt > RECONNECT_INTERVAL) {
+    Serial.println("🔄 Intentando reconectar WebSocket...");
+    setupWebSocket();
+    lastReconnectAttempt = currentTime;
+  }
 
   // Leer datos del IMU a alta frecuencia
   if (currentTime - lastIMUReading >= IMU_INTERVAL) {
@@ -125,22 +306,31 @@ void loop() {
     lastIMUReading = currentTime;
   }
 
-  // Enviar estado de actividad
-  if (currentTime - lastActivitySend >= ACTIVITY_INTERVAL) {
-    analyzeAndSendActivity();
-    lastActivitySend = currentTime;
+  // Enviar heartbeat
+  if (currentTime - lastHeartbeat >= HEARTBEAT_INTERVAL) {
+    sendHeartbeat();
+    lastHeartbeat = currentTime;
   }
 
-  // Enviar datos GPS
-  if (currentTime - lastGPSSend >= GPS_INTERVAL) {
-    sendGPSData();
-    lastGPSSend = currentTime;
-  }
+  // Solo enviar datos si estamos conectados y autenticados
+  if (isSocketConnected && isSocketAuthenticated) {
+    // Enviar estado de actividad
+    if (currentTime - lastActivitySend >= ACTIVITY_INTERVAL) {
+      analyzeAndSendActivity();
+      lastActivitySend = currentTime;
+    }
 
-  // Enviar datos de batería
-  if (currentTime - lastBatterySend >= BATTERY_INTERVAL) {
-    sendBatteryData();
-    lastBatterySend = currentTime;
+    // Enviar datos GPS
+    if (currentTime - lastGPSSend >= GPS_INTERVAL) {
+      sendGPSData();
+      lastGPSSend = currentTime;
+    }
+
+    // Enviar datos de batería
+    if (currentTime - lastBatterySend >= BATTERY_INTERVAL) {
+      sendBatteryData();
+      lastBatterySend = currentTime;
+    }
   }
 
   delay(50); // Pequeña pausa para no saturar el sistema
@@ -190,15 +380,22 @@ void connectToWiFi() {
 }
 
 void setupWebSocket() {
-  Serial.println("🔌 Configurando WebSocket puro...");
-  String url = "wss://" + String(websockets_server) + "/ws-pet";
-  wsClient.onEvent(onWebSocketEvent);
-  bool connected = wsClient.connect(url);
-  if (connected) {
-    Serial.println("✅ Conectado al WebSocket puro");
-  } else {
-    Serial.println("❌ Error al conectar WebSocket puro");
-  }
+  Serial.println("🔌 Configurando WebSocket...");
+  
+  // Configurar SSL/TLS para conexión segura
+  client.beginSSL(websockets_server, websockets_port, "/socket.io/?EIO=4&transport=websocket");
+  
+  // Configurar headers adicionales si es necesario
+  client.setExtraHeaders("User-Agent: ESP32C6-PetTracker/1.0");
+  
+  // Configurar el manejador de eventos
+  client.onEvent(webSocketEvent);
+  
+  // Configurar timeouts
+  client.setReconnectInterval(5000);
+  client.enableHeartbeat(25000, 3000, 2); // ping cada 25s, timeout 3s, 2 intentos
+  
+  Serial.println("⏳ Esperando conexión WebSocket...");
 }
 
 void readIMUData() {
@@ -329,9 +526,9 @@ ActivityState analyzeActivity(float accelMag, float gyroMag) {
 }
 
 void sendIMUData(IMUData data) {
-  if (wsClient.available()) {
+  if (isSocketConnected && isSocketAuthenticated) {
+    // Crear JSON con datos del IMU
     StaticJsonDocument<512> doc;
-    doc["type"] = "imu-data";
     doc["petId"] = PET_ID;
     doc["deviceId"] = "ESP32C6_MAX";
     doc["timestamp"] = data.timestamp;
@@ -344,16 +541,24 @@ void sendIMUData(IMUData data) {
     gyro["y"] = data.gyroY;
     gyro["z"] = data.gyroZ;
     doc["temperature"] = data.temperature;
+    
     String message;
     serializeJson(doc, message);
-    wsClient.send(message);
+    
+    // Enviar como evento de Socket.IO
+    String socketIOMessage = "42[\"imu-data\"," + message + "]";
+    bool sent = client.sendTXT(socketIOMessage);
+    
+    if (!sent) {
+      Serial.println("❌ Error enviando datos IMU");
+    }
   }
 }
 
 void sendActivityState() {
-  if (wsClient.available()) {
+  if (isSocketConnected && isSocketAuthenticated) {
+    // Crear JSON con estado de actividad
     StaticJsonDocument<256> doc;
-    doc["type"] = "activity-state";
     doc["petId"] = PET_ID;
     doc["deviceId"] = "ESP32C6_MAX";
     doc["state"] = currentActivity.state;
@@ -361,18 +566,28 @@ void sendActivityState() {
     doc["magnitudes"]["accelerometer"] = currentActivity.accelMagnitude;
     doc["magnitudes"]["gyroscope"] = currentActivity.gyroMagnitude;
     doc["timestamp"] = currentActivity.timestamp;
+    
     String message;
     serializeJson(doc, message);
-    wsClient.send(message);
+    
+    // Enviar como evento de Socket.IO
+    String socketIOMessage = "42[\"activity-state\"," + message + "]";
+    bool sent = client.sendTXT(socketIOMessage);
+    
+    if (!sent) {
+      Serial.println("❌ Error enviando estado de actividad");
+    }
   }
 }
 
 void sendGPSData() {
-  if (wsClient.available()) {
+  if (isSocketConnected && isSocketAuthenticated) {
+    // Simular pequeño movimiento para demo
     latitude += (random(-10, 11) / 10000.0);
     longitude += (random(-10, 11) / 10000.0);
+    
+    // Crear JSON con datos GPS
     StaticJsonDocument<256> doc;
-    doc["type"] = "location-data";
     doc["petId"] = PET_ID;
     doc["deviceId"] = "ESP32C6_MAX";
     doc["latitude"] = latitude;
@@ -383,28 +598,48 @@ void sendGPSData() {
     doc["accuracy"] = 3.0 + (random(-10, 11) / 10.0);
     doc["satellites"] = random(8, 15);
     doc["timestamp"] = millis();
+    
     String message;
     serializeJson(doc, message);
-    wsClient.send(message);
-    Serial.printf("📍 GPS enviado: %.6f, %.6f\n", latitude, longitude);
+    
+    // Enviar como evento de Socket.IO
+    String socketIOMessage = "42[\"location-data\"," + message + "]";
+    bool sent = client.sendTXT(socketIOMessage);
+    
+    if (sent) {
+      Serial.printf("📍 GPS enviado: %.6f, %.6f\n", latitude, longitude);
+    } else {
+      Serial.println("❌ Error enviando datos GPS");
+    }
   }
 }
 
 void sendBatteryData() {
-  if (wsClient.available()) {
+  if (isSocketConnected && isSocketAuthenticated) {
+    // Simular datos de batería
     static int batteryLevel = 100;
     batteryLevel = max(20, (int)(batteryLevel - random(0, 2))); // Descarga lenta
+    
+    // Crear JSON con datos de batería
     StaticJsonDocument<256> doc;
-    doc["type"] = "battery-data";
     doc["petId"] = PET_ID;
     doc["deviceId"] = "ESP32C6_MAX";
     doc["voltage"] = 3.7 + (batteryLevel / 100.0) * 0.5;
     doc["percentage"] = batteryLevel;
     doc["charging"] = false;
     doc["timestamp"] = millis();
+    
     String message;
     serializeJson(doc, message);
-    wsClient.send(message);
-    Serial.printf("🔋 Batería: %d%%\n", batteryLevel);
+    
+    // Enviar como evento de Socket.IO
+    String socketIOMessage = "42[\"battery-data\"," + message + "]";
+    bool sent = client.sendTXT(socketIOMessage);
+    
+    if (sent) {
+      Serial.printf("🔋 Batería: %d%%\n", batteryLevel);
+    } else {
+      Serial.println("❌ Error enviando datos de batería");
+    }
   }
 }

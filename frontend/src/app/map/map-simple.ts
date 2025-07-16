@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
-import { RealTimeService, PetLocationData, PetIMUData, PetBatteryData } from '../services/realtime.service';
+import { WebSocketService, PetData } from '../services/websocket.service';
 
 @Component({
   selector: 'app-map-simple',
@@ -847,9 +847,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   public isProduction = false;
   
   // Datos en tiempo real optimizados
-  public lastLocationUpdate: PetLocationData | null = null;
-  public lastIMUUpdate: PetIMUData | null = null;
-  public lastBatteryUpdate: PetBatteryData | null = null;
+  public lastLocationUpdate: any = null;
+  public lastIMUUpdate: any = null;
+  public lastBatteryUpdate: any = null;
   
   // Popup de información de mascota
   public showPetPopup = false;
@@ -862,14 +862,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private petLocation: [number, number] = [-76.9568, -12.0631];
 
   constructor(
-    private realTimeService: RealTimeService,
+    private webSocketService: WebSocketService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.isProduction = false; // Será reemplazado por environment.production
     this.initializeMap();
-    this.initializeRealTimeService();
+    this.initializeWebSocketService();
   }
 
   ngOnDestroy() {
@@ -884,7 +884,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
     
     // Desconectar servicio en tiempo real
-    this.realTimeService.disconnect();
+    // No es necesario desconectar WebSocketService, se reconecta automáticamente
   }
 
   private async initializeMap() {
@@ -1684,41 +1684,36 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   // Métodos para el servicio en tiempo real
-  private initializeRealTimeService(): void {
-    // Suscribirse a los datos de conexión
-    const connectionSub = this.realTimeService.connection$.subscribe(connected => {
-      this.isRealtimeConnected = connected;
-      console.log('Conexión en tiempo real:', connected ? 'Conectada' : 'Desconectada');
-    });
-
-    // Suscribirse a los datos de ubicación
-    const locationSub = this.realTimeService.location$.subscribe(locationData => {
-      if (locationData) {
-        this.lastLocationUpdate = locationData;
-        this.updatePetLocation(locationData);
+  private initializeWebSocketService(): void {
+    const sub = this.webSocketService.petData$.subscribe((data: PetData | null) => {
+      if (data) {
+        // Actualizar ubicación
+        this.lastLocationUpdate = {
+          petId: data.petId.toString(),
+          latitude: data.coordinates[1],
+          longitude: data.coordinates[0],
+          timestamp: data.timestamp
+        };
+        this.updatePetLocation(this.lastLocationUpdate);
+        // Actualizar IMU
+        this.lastIMUUpdate = {
+          petId: data.petId.toString(),
+          accelX: data.accelerometer.x,
+          accelY: data.accelerometer.y,
+          accelZ: data.accelerometer.z,
+          gyroX: data.gyroscope.x,
+          gyroY: data.gyroscope.y,
+          gyroZ: data.gyroscope.z,
+          activity: data.activity,
+          timestamp: data.timestamp
+        };
+        this.updatePetActivity(this.lastIMUUpdate);
       }
     });
-
-    // Suscribirse a los datos IMU
-    const imuSub = this.realTimeService.imuData$.subscribe(imuData => {
-      if (imuData) {
-        this.lastIMUUpdate = imuData;
-        this.updatePetActivity(imuData);
-      }
-    });
-
-    // Suscribirse a los datos de batería
-    const batterySub = this.realTimeService.battery$.subscribe(batteryData => {
-      if (batteryData) {
-        this.lastBatteryUpdate = batteryData;
-        this.updatePetBattery(batteryData);
-      }
-    });
-
-    this.subscriptions.push(connectionSub, locationSub, imuSub, batterySub);
+    this.subscriptions.push(sub);
   }
 
-  private updatePetLocation(locationData: PetLocationData): void {
+  private updatePetLocation(locationData: any): void {
     const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
     
     console.log('Actualizando ubicación de mascota:', newCoordinates);
@@ -1803,7 +1798,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  private updatePetActivity(imuData: PetIMUData): void {
+  private updatePetActivity(imuData: any): void {
     console.log('Actualizando actividad de mascota:', imuData.activity);
     
     // Solo actualizar si es la mascota Max (que recibe datos del ESP32)
@@ -1896,7 +1891,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  private updatePetBattery(batteryData: PetBatteryData): void {
+  private updatePetBattery(batteryData: any): void {
     console.log('Actualizando batería de mascota:', batteryData.batteryLevel + '%');
     
     if (this.petMarker) {
@@ -1925,7 +1920,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createRealtimePetMarker(locationData: PetLocationData): void {
+  private createRealtimePetMarker(locationData: any): void {
     const animal = {
       name: 'Mascota GPS',
       type: 'dog',

@@ -42,7 +42,6 @@ export class SocketService {
   constructor() {
     this.socket = io(environment.socketUrl, {
       autoConnect: false,
-      transports: ['websocket', 'polling']
     });
 
     this.setupEventListeners();

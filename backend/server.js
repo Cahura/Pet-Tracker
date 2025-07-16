@@ -140,7 +140,6 @@ const io = socketIo(server, {
     allowedHeaders: ["Content-Type"],
     credentials: true
   },
-  transports: ['websocket', 'polling']
 });
 
 const PORT = process.env.PORT || 3000;

@@ -859,7 +859,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private isPopupHovered = false;
   
   // Pet location (Santa Isabel for Luna - coordenadas genéricas para repo)
-  private petLocation: [number, number] = [-76.9568, -12.0631];
+  // Pet location fija para Max: 12.10426° S, 76.96358° W
+  private petLocation: [number, number] = [-76.96358, -12.10426];
 
   constructor(
     private webSocketService: WebSocketService,

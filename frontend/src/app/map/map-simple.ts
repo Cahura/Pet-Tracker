@@ -868,7 +868,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private maxStartCoords: [number, number] = [-76.96358, -12.10426]; // Inicio
   private maxEndCoords: [number, number] = [-76.96456, -12.10421];   // Fin
   private animationInterval: any = null;
-  private animationSteps = 3600; // Más pasos para animación más lenta (~1 hora)
+  private animationSteps = 60; // 60 pasos, cada uno simula 10 minutos (total 10 horas)
   private animationStep = 0;
 
   constructor(
@@ -2015,6 +2015,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Nuevo método para obtener información del estado de la mascota
   public getPetStatusInfo(pet: any): { class: string, icon: string, text: string } {
+    // Forzar que siempre muestre "Conectado" en el popup
+    return {
+      class: 'status-active',
+      icon: '✅',
+      text: 'Conectado'
+    };
+    /*
+    // Si quieres mantener lógica original, comenta el bloque anterior y descomenta este:
     switch (pet.activityState) {
       case 'lying':
         return {
@@ -2038,9 +2046,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         return {
           class: 'status-active',
           icon: '✅',
-          text: 'Activo'
+          text: 'Conectado'
         };
     }
+    */
   }
 
   // Método para mostrar la ubicación del usuario con avatar de persona y animación pop
@@ -2165,9 +2174,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       const newCoords: [number, number] = [lng, lat];
       this.petLocation = newCoords;
       this.updatePetMarker(newCoords);
-    }, 1000); // 1000ms por paso, total ~1 hora
+    }, 10000); // 10,000ms (10 segundos) por paso, cada paso simula 10 minutos
   }
 
+  // Actualiza el marcador de la mascota en el mapa
   public updatePetMarker(data: [number, number] | any): void {
     let coords: [number, number] | undefined;
     if (Array.isArray(data) && data.length === 2 && typeof data[0] === 'number' && typeof data[1] === 'number') {

@@ -41,7 +41,15 @@ export class WebSocketService {
       this.ngZone.run(() => {
         try {
           const data = JSON.parse(event.data);
-          if (data.coordinates && data.accelerometer && data.gyroscope) {
+          // Adaptar datos recibidos: si vienen como latitude/longitude, crear coordinates
+          if ((data.latitude !== undefined && data.longitude !== undefined) && data.accelerometer && data.gyroscope) {
+            const petData: PetData = {
+              ...data,
+              coordinates: [data.longitude, data.latitude],
+              battery: data.battery ?? 100,
+            };
+            this.petDataSubject.next(petData);
+          } else if (data.coordinates && data.accelerometer && data.gyroscope) {
             this.petDataSubject.next(data);
           }
         } catch (e) {

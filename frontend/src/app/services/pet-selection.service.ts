@@ -67,8 +67,8 @@ export class PetSelectionService {
       breed: 'Golden Retriever', 
       status: 'online', 
       battery: 78, 
-      location: 'Calle Cantuarias, Miraflores', 
-      coordinates: [-77.0317, -12.1165], // Calle Cantuarias con Pasaje Tello
+      location: 'UPC Monterrico, Lima', 
+      coordinates: [-76.96358, -12.10426], // UPC Monterrico
       icon: 'fas fa-dog',
       color: '#FF6B35',
       gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',

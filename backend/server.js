@@ -74,10 +74,24 @@ let clients = new Set();
 wss.on('connection', (ws, req) => {
   clients.add(ws);
   ws.on('message', (message) => {
+    let fixedMessage = message;
+    try {
+      const data = JSON.parse(message);
+      // Si es Max (petId: 1), fijar coordenadas
+      if (data.petId === 1) {
+        data.latitude = -12.10426;
+        data.longitude = -76.96358;
+        // Si usa 'coordinates' también
+        data.coordinates = [-76.96358, -12.10426];
+        fixedMessage = JSON.stringify(data);
+      }
+    } catch (e) {
+      // Si no es JSON, no modificar
+    }
     // Reenviar a todos los clientes (excepto el que envió)
     for (let client of clients) {
       if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(message);
+        client.send(fixedMessage);
       }
     }
   });

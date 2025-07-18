@@ -862,6 +862,11 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   // Pet location fija para Max: 12.10426° S, 76.96358° W
   // Pet location fija para Max: UPC Monterrico, Lima-Perú
   private petLocation: [number, number] = [-76.9717, -12.0891]; // UPC Monterrico
+  // Coordenadas destino: Av. Primavera (12.10421° S, 76.96456° W)
+  private primaveraCoords: [number, number] = [-76.96456, -12.10421];
+  private animationInterval: any = null;
+  private animationSteps = 1000; // Más pasos para animación lenta
+  private animationStep = 0;
 
   constructor(
     private webSocketService: WebSocketService,
@@ -872,6 +877,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     this.isProduction = false; // Será reemplazado por environment.production
     this.initializeMap();
     this.initializeWebSocketService();
+    this.startMaxAnimation();
   }
 
   ngOnDestroy() {
@@ -974,22 +980,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   // Update pet marker with new animal data
-  public updatePetMarker(animal: any): void {
-    console.log('updatePetMarker called with animal:', animal);
-    
-    if (this.petMarker) {
-      // Remove existing marker
-      this.petMarker.remove();
-    }
-    
-    // Update pet location
-    if (animal.coordinates) {
-      this.petLocation = animal.coordinates;
-    }
-    
-    // Create new marker with updated animal data
-    this.addPetMarkerWithAnimal(animal);
-  }
 
   // Add pet marker with specific animal data
   private addPetMarkerWithAnimal(animal: any): void {
@@ -2148,5 +2138,41 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     this.popupTimeout = setTimeout(() => {
       this.closePetPopup();
     }, 200);
+  }
+
+  // Animación para mover lentamente la ubicación de Max
+  private startMaxAnimation(): void {
+    if (this.animationInterval) {
+      clearInterval(this.animationInterval);
+    }
+    this.animationStep = 0;
+    const start = this.petLocation;
+    const end = this.primaveraCoords;
+    this.animationInterval = setInterval(() => {
+      this.animationStep++;
+      if (this.animationStep > this.animationSteps) {
+        clearInterval(this.animationInterval);
+        this.petLocation = end;
+        this.updatePetMarker(end);
+        return;
+      }
+      const lng = start[0] + (end[0] - start[0]) * (this.animationStep / this.animationSteps);
+      const lat = start[1] + (end[1] - start[1]) * (this.animationStep / this.animationSteps);
+      const newCoords: [number, number] = [lng, lat];
+      this.petLocation = newCoords;
+      this.updatePetMarker(newCoords);
+    }, 1000); // 1000ms por paso, total ~16 minutos
+  }
+
+  private updatePetMarker(coords: [number, number]): void {
+    if (this.petMarker && this.map) {
+      this.petMarker.setLngLat(coords);
+      // Solo mover el centro si está lejos
+      const currentCenter = this.map.getCenter();
+      const distance = this.calculateDistance([currentCenter.lng, currentCenter.lat], coords);
+      if (distance > 0.002) {
+        this.map.flyTo({ center: coords, duration: 1000, essential: true });
+      }
+    }
   }
 }

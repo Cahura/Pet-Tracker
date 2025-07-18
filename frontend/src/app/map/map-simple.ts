@@ -864,8 +864,11 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private petLocation: [number, number] = [-76.9717, -12.0891]; // UPC Monterrico
   // Coordenadas destino: Av. Primavera (12.10421° S, 76.96456° W)
   private primaveraCoords: [number, number] = [-76.96456, -12.10421];
+  // Coordenadas de inicio y fin para la animación de Max
+  private maxStartCoords: [number, number] = [-76.96358, -12.10426]; // Inicio
+  private maxEndCoords: [number, number] = [-76.96456, -12.10421];   // Fin
   private animationInterval: any = null;
-  private animationSteps = 1000; // Más pasos para animación lenta
+  private animationSteps = 3600; // Más pasos para animación más lenta (~1 hora)
   private animationStep = 0;
 
   constructor(
@@ -875,6 +878,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isProduction = false; // Será reemplazado por environment.production
+    this.petLocation = this.maxStartCoords;
     this.initializeMap();
     this.initializeWebSocketService();
     this.startMaxAnimation();
@@ -2146,8 +2150,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       clearInterval(this.animationInterval);
     }
     this.animationStep = 0;
-    const start = this.petLocation;
-    const end = this.primaveraCoords;
+    const start = this.maxStartCoords;
+    const end = this.maxEndCoords;
     this.animationInterval = setInterval(() => {
       this.animationStep++;
       if (this.animationStep > this.animationSteps) {
@@ -2161,7 +2165,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       const newCoords: [number, number] = [lng, lat];
       this.petLocation = newCoords;
       this.updatePetMarker(newCoords);
-    }, 1000); // 1000ms por paso, total ~16 minutos
+    }, 1000); // 1000ms por paso, total ~1 hora
   }
 
   public updatePetMarker(data: [number, number] | any): void {

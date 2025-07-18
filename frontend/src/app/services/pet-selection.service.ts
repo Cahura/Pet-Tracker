@@ -122,7 +122,12 @@ export class PetSelectionService {
     }
   ];
 
-  constructor() {}
+  constructor() {
+    // Seleccionar mascota demo por defecto al iniciar
+    if (!this.selectedPetSubject.value && this.demoAnimals.length > 0) {
+      this.selectedPetSubject.next(this.demoAnimals[0]);
+    }
+  }
 
   getDemoAnimals(): PetData[] {
     return this.demoAnimals;

@@ -2164,8 +2164,16 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }, 1000); // 1000ms por paso, total ~16 minutos
   }
 
-  private updatePetMarker(coords: [number, number]): void {
-    if (this.petMarker && this.map) {
+  public updatePetMarker(data: [number, number] | any): void {
+    let coords: [number, number] | undefined;
+    if (Array.isArray(data) && data.length === 2 && typeof data[0] === 'number' && typeof data[1] === 'number') {
+      coords = [data[0], data[1]];
+    } else if (data && Array.isArray(data.coordinates) && data.coordinates.length === 2) {
+      coords = [data.coordinates[0], data.coordinates[1]];
+    } else {
+      return;
+    }
+    if (this.petMarker && this.map && coords) {
       this.petMarker.setLngLat(coords);
       // Solo mover el centro si está lejos
       const currentCenter = this.map.getCenter();

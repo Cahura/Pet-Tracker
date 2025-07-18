@@ -1716,27 +1716,18 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   private updatePetLocation(locationData: any): void {
-    const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
-    
-    console.log('Actualizando ubicación de mascota:', newCoordinates);
-    
-    // Actualizar ubicación interna
+    // Coordenadas fijas para Max: UPC Monterrico
+    const newCoordinates: [number, number] = [-76.9717, -12.0891];
+    console.log('Actualizando ubicación de mascota (fija UPC Monterrico):', newCoordinates);
     this.petLocation = newCoordinates;
-    
-    // Si existe el marcador, actualizar su posición con animación optimizada
     if (this.petMarker && this.map) {
-      // Usar setLngLat para movimiento fluido sin recentrar automáticamente
       this.petMarker.setLngLat(newCoordinates);
-      
-      // Solo centrar si la mascota está muy lejos de la vista actual
       const currentCenter = this.map.getCenter();
       const distance = this.calculateDistance(
         [currentCenter.lng, currentCenter.lat],
         newCoordinates
       );
-      
-      // Solo recentrar si la mascota está a más de 200 metros del centro actual
-      if (distance > 0.002) { // ~200 metros aproximadamente
+      if (distance > 0.002) {
         this.map.flyTo({
           center: newCoordinates,
           duration: 1000,

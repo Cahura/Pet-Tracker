@@ -860,7 +860,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   
   // Pet location (Santa Isabel for Luna - coordenadas genéricas para repo)
   // Pet location fija para Max: 12.10426° S, 76.96358° W
-  private petLocation: [number, number] = [-76.96358, -12.10426];
+  // Pet location fija para Max: UPC Monterrico, Lima-Perú
+  private petLocation: [number, number] = [-76.9717, -12.0891]; // UPC Monterrico
 
   constructor(
     private webSocketService: WebSocketService,

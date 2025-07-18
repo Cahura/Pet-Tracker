@@ -1941,14 +1941,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Forzar estado de actividad a 'standing' para el popup de la mascota
   public getActivityText(activityState: string): string {
-    switch (activityState) {
-      case 'lying': return 'Echado';
-      case 'standing': return 'Parado';
-      case 'walking': return 'Caminando';
-      case 'running': return 'Corriendo';
-      default: return 'Desconocido';
-    }
+    return 'De pie'; // Siempre mostrar "De pie" en el popup
   }
 
   // Métodos para el popup de información con animaciones

@@ -771,7 +771,7 @@ export interface LocationAlert {
       color: var(--success-color);
     }
 
-    /* Estilos para el modal de añadir zona - mismo estilo que edición */
+    /* Estilos para el modal de añadir zona - estilo liquid glass elegante */
     .add-zone-modal {
       position: fixed;
       top: 0;
@@ -804,10 +804,12 @@ export interface LocationAlert {
       border: 1px solid var(--liquid-glass-border);
       border-radius: 32px;
       width: 95%;
-      max-width: 500px;
+      max-width: 520px;
       max-height: 90vh;
       overflow: hidden;
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+      box-shadow: 
+        0 25px 70px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
       transform: scale(0.9) translateY(40px);
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
@@ -843,6 +845,41 @@ export interface LocationAlert {
       flex: 1;
       overflow-y: auto;
       padding: 32px;
+      
+      /* Scrollbar liquid glass personalizado */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    /* Webkit scrollbar personalizado con liquid glass */
+    .add-modal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .add-modal-body::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+
+    .add-modal-body::-webkit-scrollbar-thumb {
+      background: linear-gradient(
+        180deg, 
+        rgba(255, 255, 255, 0.15) 0%, 
+        rgba(255, 255, 255, 0.1) 100%
+      );
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .add-modal-body::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(
+        180deg, 
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0.15) 100%
+      );
     }
 
     .add-modal-footer {
@@ -850,6 +887,11 @@ export interface LocationAlert {
       gap: 16px;
       padding: 24px 32px 32px 32px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.02) 0%,
+        rgba(255, 255, 255, 0.00) 100%
+      );
     }
 
     /* Estilos para el modal de edición elegante */
@@ -965,13 +1007,57 @@ export interface LocationAlert {
       display: flex;
       flex-direction: column;
       gap: 32px;
+      
+      /* Scrollbar liquid glass personalizado */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    /* Webkit scrollbar personalizado con liquid glass para modal de edición */
+    .edit-modal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .edit-modal-body::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+
+    .edit-modal-body::-webkit-scrollbar-thumb {
+      background: linear-gradient(
+        180deg, 
+        rgba(255, 255, 255, 0.15) 0%, 
+        rgba(255, 255, 255, 0.1) 100%
+      );
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .edit-modal-body::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(
+        180deg, 
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0.15) 100%
+      );
     }
 
     .form-section {
-      background: rgba(255, 255, 255, 0.03);
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+      );
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 24px;
+      border-radius: 24px;
+      padding: 28px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
 
     .form-section h4 {
@@ -1211,6 +1297,11 @@ export interface LocationAlert {
       gap: 16px;
       padding: 24px 32px 32px 32px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.02) 0%,
+        rgba(255, 255, 255, 0.00) 100%
+      );
     }
 
     .btn-secondary.elegant,
@@ -1259,7 +1350,7 @@ export interface LocationAlert {
       box-shadow: none;
     }
 
-    /* Mini-mapa styles */
+    /* Mini-mapa styles con liquid glass */
     .location-selector {
       margin-bottom: 24px;
     }
@@ -1273,19 +1364,37 @@ export interface LocationAlert {
 
     .mini-map-container {
       position: relative;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
       margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
 
     .mini-map {
       width: 100%;
-      height: 200px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
+      height: 240px;
+      background: linear-gradient(
+        135deg,
+        rgba(0, 122, 255, 0.05) 0%,
+        rgba(90, 200, 250, 0.05) 100%
+      );
+      border-radius: 20px;
       position: relative;
       overflow: hidden;
+      cursor: crosshair;
+      transition: all 0.3s ease;
+    }
+
+    .mini-map:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(0, 122, 255, 0.08) 0%,
+        rgba(90, 200, 250, 0.08) 100%
+      );
     }
 
     .map-loading {
@@ -1298,30 +1407,36 @@ export interface LocationAlert {
     }
 
     .map-loading i {
-      font-size: 32px;
-      margin-bottom: 8px;
+      font-size: 36px;
+      margin-bottom: 12px;
       display: block;
+      color: var(--primary-color);
+      opacity: 0.7;
     }
 
     .map-loading p {
       font-size: 14px;
       margin: 0;
+      font-weight: 500;
     }
 
     .map-instructions {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
+      gap: 12px;
+      padding: 16px 20px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
+      border-radius: 16px;
       color: var(--text-secondary);
       font-size: 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .map-instructions i {
       color: var(--primary-color);
+      font-size: 16px;
     }
 
     /* Liquid glass select */

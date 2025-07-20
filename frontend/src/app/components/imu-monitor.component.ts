@@ -171,18 +171,11 @@ import { Subscription } from 'rxjs';
         </div>
         
         <div class="stats-grid">
-          <div class="stat-card lying">
+          <div class="stat-card resting">
             <i class="fas fa-bed"></i>
             <div class="stat-info">
-              <span class="stat-value">{{ stats.lying }}min</span>
+              <span class="stat-value">{{ stats.resting }}min</span>
               <span class="stat-label">Descansando</span>
-            </div>
-          </div>
-          <div class="stat-card standing">
-            <i class="fas fa-male"></i>
-            <div class="stat-info">
-              <span class="stat-value">{{ stats.standing }}min</span>
-              <span class="stat-label">De pie</span>
             </div>
           </div>
           <div class="stat-card walking">
@@ -197,6 +190,13 @@ import { Subscription } from 'rxjs';
             <div class="stat-info">
               <span class="stat-value">{{ stats.running }}min</span>
               <span class="stat-label">Corriendo</span>
+            </div>
+          </div>
+          <div class="stat-card traveling">
+            <i class="fas fa-car"></i>
+            <div class="stat-info">
+              <span class="stat-value">{{ stats.traveling }}min</span>
+              <span class="stat-label">En transporte</span>
             </div>
           </div>
         </div>
@@ -509,12 +509,8 @@ import { Subscription } from 'rxjs';
       font-size: 24px;
     }
 
-    .activity-icon.lying {
+    .activity-icon.resting {
       background: linear-gradient(135deg, #34495E, #2C3E50);
-    }
-
-    .activity-icon.standing {
-      background: linear-gradient(135deg, #3498DB, #2980B9);
     }
 
     .activity-icon.walking {
@@ -523,6 +519,10 @@ import { Subscription } from 'rxjs';
 
     .activity-icon.running {
       background: linear-gradient(135deg, #E74C3C, #C0392B);
+    }
+
+    .activity-icon.traveling {
+      background: linear-gradient(135deg, #9B59B6, #8E44AD);
     }
 
     .activity-info h5 {
@@ -579,10 +579,10 @@ import { Subscription } from 'rxjs';
       background: var(--surface-primary);
     }
 
-    .timeline-item.lying .timeline-dot { border-color: #34495E; }
-    .timeline-item.standing .timeline-dot { border-color: #3498DB; }
+    .timeline-item.resting .timeline-dot { border-color: #34495E; }
     .timeline-item.walking .timeline-dot { border-color: #F39C12; }
     .timeline-item.running .timeline-dot { border-color: #E74C3C; }
+    .timeline-item.traveling .timeline-dot { border-color: #9B59B6; }
 
     .timeline-content {
       background: rgba(255, 255, 255, 0.05);
@@ -650,10 +650,10 @@ import { Subscription } from 'rxjs';
       font-size: 14px;
     }
 
-    .stat-card.lying i { background: #34495E; }
-    .stat-card.standing i { background: #3498DB; }
+    .stat-card.resting i { background: #34495E; }
     .stat-card.walking i { background: #F39C12; }
     .stat-card.running i { background: #E74C3C; }
+    .stat-card.traveling i { background: #9B59B6; }
 
     .stat-info {
       display: flex;
@@ -717,7 +717,7 @@ export class ImuMonitorComponent implements OnInit, OnDestroy {
   imuData: IMUData | null = null;
   activityHistory: ActivityRecord[] = [];
   lastActivityRecord: ActivityRecord | null = null;
-  stats = { lying: 0, standing: 0, walking: 0, running: 0, total: 0 };
+  stats = { resting: 0, walking: 0, running: 0, traveling: 0, total: 0 };
   isOnline = false;
   
   private subscription: Subscription = new Subscription();
@@ -793,15 +793,16 @@ export class ImuMonitorComponent implements OnInit, OnDestroy {
   }
 
   getActivityClass(): string {
-    return this.currentPet?.activityState || 'lying';
+    return this.currentPet?.activityState || 'resting';
   }
 
   getActivityIcon(): string {
     switch (this.currentPet?.activityState) {
-      case 'lying': return 'fa-bed';
-      case 'standing': return 'fa-male';
+      case 'resting': return 'fa-bed';
       case 'walking': return 'fa-walking';
       case 'running': return 'fa-running';
+      case 'traveling': return 'fa-car';
+      case 'disconnected': return 'fa-wifi-slash';
       default: return 'fa-question';
     }
   }
@@ -809,10 +810,11 @@ export class ImuMonitorComponent implements OnInit, OnDestroy {
   getActivityText(state?: string): string {
     const activityState = state || this.currentPet?.activityState;
     switch (activityState) {
-      case 'lying': return 'Descansando';
-      case 'standing': return 'De pie';
+      case 'resting': return 'Descansando';
       case 'walking': return 'Caminando';
       case 'running': return 'Corriendo';
+      case 'traveling': return 'En transporte';
+      case 'disconnected': return 'Desconectado';
       default: return 'Desconocido';
     }
   }

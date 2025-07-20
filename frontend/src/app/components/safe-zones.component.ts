@@ -776,8 +776,8 @@ export interface LocationAlert {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -789,6 +789,8 @@ export interface LocationAlert {
       visibility: hidden;
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: none;
+      padding: 20px;
+      box-sizing: border-box;
     }
 
     .add-zone-modal.show {
@@ -801,24 +803,26 @@ export interface LocationAlert {
       background: var(--liquid-glass-bg);
       backdrop-filter: blur(30px);
       -webkit-backdrop-filter: blur(30px);
-      border: none;
+      border: none !important;
       border-radius: 32px;
-      width: 95%;
+      width: 95vw;
       max-width: 620px;
       max-height: 85vh;
       overflow: hidden;
       box-shadow: 
-        0 32px 80px rgba(0, 0, 0, 0.7),
-        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        0 32px 80px rgba(0, 0, 0, 0.7);
       transform: scale(0.9) translateY(40px);
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
       flex-direction: column;
-      outline: none;
+      outline: none !important;
+      margin: 20px;
     }
 
     .add-zone-modal.show .add-modal-content {
       transform: scale(1) translateY(0);
+      border: none !important;
+      outline: none !important;
     }
 
     .add-modal-header {
@@ -900,8 +904,8 @@ export interface LocationAlert {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -913,6 +917,8 @@ export interface LocationAlert {
       visibility: hidden;
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: none;
+      padding: 20px;
+      box-sizing: border-box;
     }
 
     .edit-zone-modal.show {
@@ -925,24 +931,26 @@ export interface LocationAlert {
       background: var(--liquid-glass-bg);
       backdrop-filter: blur(30px);
       -webkit-backdrop-filter: blur(30px);
-      border: none;
+      border: none !important;
       border-radius: 32px;
-      width: 95%;
+      width: 95vw;
       max-width: 720px;
       max-height: 85vh;
       overflow: hidden;
       box-shadow: 
-        0 32px 80px rgba(0, 0, 0, 0.7),
-        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        0 32px 80px rgba(0, 0, 0, 0.7);
       transform: scale(0.9) translateY(40px);
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
       flex-direction: column;
-      outline: none;
+      outline: none !important;
+      margin: 20px;
     }
 
     .edit-zone-modal.show .edit-modal-content {
       transform: scale(1) translateY(0);
+      border: none !important;
+      outline: none !important;
     }
 
     .edit-modal-header {
@@ -1448,36 +1456,81 @@ export interface LocationAlert {
       background: rgba(255, 255, 255, 0.03);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: none;
       color: white;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
     }
 
     .elegant-select.liquid-glass option {
       background: rgba(0, 0, 0, 0.9);
       color: white;
+      border: none;
+    }
+
+    /* Asegurar que no hay bordes en ningún elemento del modal */
+    .add-modal-content *,
+    .edit-modal-content * {
+      border-color: transparent !important;
+    }
+
+    .add-modal-content,
+    .edit-modal-content {
+      border: none !important;
+      outline: none !important;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    .add-modal-content .elegant-select,
+    .add-modal-content .elegant-input,
+    .edit-modal-content .elegant-select,
+    .edit-modal-content .elegant-input {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .add-modal-content .elegant-select:focus,
+    .add-modal-content .elegant-input:focus,
+    .edit-modal-content .elegant-select:focus,
+    .edit-modal-content .elegant-input:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* Eliminar cualquier borde del mini-mapa */
+    .mini-map-container,
+    .mini-map {
+      border: none !important;
+      outline: none !important;
     }
 
     /* Responsive design */
-    @media (max-width: 768px) {
+    @media (max-width: 480px) {
       .edit-modal-content,
       .add-modal-content {
-        width: 95%;
-        max-height: 95vh;
-        border-radius: 24px;
+        width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        max-width: 100vw;
+        border-radius: 0;
+        margin: 0;
       }
 
       .edit-modal-header,
+      .add-modal-header {
+        padding: 16px 20px 0 20px;
+      }
+
       .edit-modal-body,
+      .add-modal-body {
+        padding: 20px;
+      }
+
       .edit-modal-footer,
-      .add-modal-header,
-      .add-modal-body,
       .add-modal-footer {
-        padding-left: 20px;
-        padding-right: 20px;
+        padding: 16px 20px 20px 20px;
       }
 
       .form-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
       }
 
       .form-group.full-width {
@@ -1487,19 +1540,139 @@ export interface LocationAlert {
       .edit-modal-footer,
       .add-modal-footer {
         flex-direction: column;
+        gap: 12px;
+      }
+
+      .mini-map {
+        height: 200px;
+      }
+
+      .header-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+
+      .header-text h3 {
+        font-size: 20px;
+      }
+    }
+
+    @media (min-width: 481px) and (max-width: 768px) {
+      .edit-modal-content,
+      .add-modal-content {
+        width: 95vw;
+        max-height: 90vh;
+        border-radius: 24px;
+        margin: 10px;
+      }
+
+      .edit-modal-header,
+      .edit-modal-body,
+      .edit-modal-footer,
+      .add-modal-header,
+      .add-modal-body,
+      .add-modal-footer {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .form-group.full-width {
+        grid-column: span 2;
+      }
+
+      .edit-modal-footer,
+      .add-modal-footer {
+        flex-direction: row;
+        gap: 16px;
+      }
+
+      .mini-map {
+        height: 220px;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .edit-modal-content,
+      .add-modal-content {
+        width: 90vw;
+        max-height: 85vh;
+        margin: 15px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .form-group.full-width {
+        grid-column: span 2;
+      }
+
+      .mini-map {
+        height: 250px;
       }
     }
 
     /* Estilos para pantallas grandes */
-    @media (min-width: 1200px) {
+    @media (min-width: 1025px) and (max-width: 1439px) {
+      .add-modal-content {
+        max-width: 700px;
+        max-height: 80vh;
+        margin: 20px;
+      }
+
+      .edit-modal-content {
+        max-width: 800px;
+        max-height: 80vh;
+        margin: 20px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      .form-group.full-width {
+        grid-column: span 2;
+      }
+
+      .mini-map {
+        height: 280px;
+      }
+
+      .edit-modal-header,
+      .add-modal-header {
+        padding: 32px 32px 0 32px;
+      }
+
+      .edit-modal-body,
+      .add-modal-body {
+        padding: 32px;
+      }
+
+      .edit-modal-footer,
+      .add-modal-footer {
+        padding: 24px 32px 32px 32px;
+      }
+    }
+
+    @media (min-width: 1440px) {
       .add-modal-content {
         max-width: 800px;
         max-height: 80vh;
+        margin: 25px;
       }
 
       .edit-modal-content {
         max-width: 900px;
         max-height: 80vh;
+        margin: 25px;
       }
 
       .form-grid {
@@ -1531,14 +1704,18 @@ export interface LocationAlert {
       }
     }
 
-    /* Estilos para pantallas extra grandes */
-    @media (min-width: 1600px) {
+    /* Estilos para pantallas ultra grandes */
+    @media (min-width: 1920px) {
       .add-modal-content {
         max-width: 1000px;
+        max-height: 75vh;
+        margin: 30px;
       }
 
       .edit-modal-content {
         max-width: 1100px;
+        max-height: 75vh;
+        margin: 30px;
       }
 
       .form-grid {
@@ -1552,6 +1729,21 @@ export interface LocationAlert {
 
       .mini-map {
         height: 350px;
+      }
+
+      .edit-modal-header,
+      .add-modal-header {
+        padding: 48px 48px 0 48px;
+      }
+
+      .edit-modal-body,
+      .add-modal-body {
+        padding: 48px;
+      }
+
+      .edit-modal-footer,
+      .add-modal-footer {
+        padding: 40px 48px 48px 48px;
       }
     }
   `],

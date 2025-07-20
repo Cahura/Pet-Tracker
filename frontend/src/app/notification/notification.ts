@@ -125,6 +125,34 @@ export class NotificationService {
     });
   }
 
+  // Métodos específicos para el estado de conexión del ESP32C6
+  public showConnectionActive(petName: string): void {
+    this.showNotification({
+      title: `${petName} - Sistema Activo`,
+      message: 'ESP32C6 conectado y enviando datos en tiempo real',
+      type: 'success',
+      duration: 5000
+    });
+  }
+
+  public showConnectionInactive(petName: string): void {
+    this.showNotification({
+      title: `${petName} - Sistema Inactivo`,
+      message: 'ESP32C6 desconectado - No se reciben datos del dispositivo',
+      type: 'warning',
+      duration: 7000
+    });
+  }
+
+  public showConnectionRestored(petName: string): void {
+    this.showNotification({
+      title: `${petName} - Conexión Restaurada`,
+      message: 'ESP32C6 reconectado - Datos en tiempo real disponibles',
+      type: 'success',
+      duration: 5000
+    });
+  }
+
   public showSuccess(title: string, message: string): void {
     this.showNotification({
       title,

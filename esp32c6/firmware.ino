@@ -31,7 +31,9 @@ HardwareSerial SerialGPS(1);
 
 // Variables de timing optimizadas
 unsigned long lastSend = 0;
-const unsigned long SEND_INTERVAL = 5000; // Enviar cada 5 segundos
+const unsigned long SEND_INTERVAL = 8000; // Enviar cada 8 segundos para conservar batería
+unsigned long lastGPSUpdate = 0;
+const unsigned long GPS_UPDATE_INTERVAL = 10000; // Actualizar GPS cada 10 segundos
 unsigned long lastReconnect = 0;
 const unsigned long RECONNECT_INTERVAL = 30000; // Reintentar conexión cada 30 segundos
 
@@ -39,6 +41,15 @@ const unsigned long RECONNECT_INTERVAL = 30000; // Reintentar conexión cada 30 
 bool wifiConnected = false;
 bool wsConnected = false;
 bool mpuInitialized = false;
+
+// Variables para análisis de actividad
+float previousLat = 0.0;
+float previousLng = 0.0;
+unsigned long lastGPSTime = 0;
+float currentSpeed = 0.0; // Velocidad en m/s
+float averageAccelMagnitude = 0.0;
+int activitySamples = 0;
+const int MAX_ACTIVITY_SAMPLES = 5; // Promediar últimas 5 muestras
 
 // Buffer para datos JSON
 StaticJsonDocument<512> jsonDoc;
@@ -164,20 +175,48 @@ void sendOptimizedPetData() {
   jsonDoc["deviceId"] = "ESP32C6_MAX";
   jsonDoc["timestamp"] = millis();
   jsonDoc["battery"] = calculateBatteryLevel();
+  
+  // Campo de estado de conexión - indica que el ESP32C6 está activo
+  jsonDoc["connectionStatus"] = "connected";
+  jsonDoc["deviceActive"] = true;
 
-  // Obtener datos GPS
+  // Obtener y analizar datos GPS
   bool gpsValid = false;
-  if (gps.location.isValid() && gps.location.age() < 2000) { // GPS válido si es reciente
-    jsonDoc["latitude"] = gps.location.lat();
-    jsonDoc["longitude"] = gps.location.lng();
+  float currentLat = 0.0, currentLng = 0.0;
+  
+  if (gps.location.isValid() && gps.location.age() < 5000) { // GPS válido si es reciente (5 seg)
+    currentLat = gps.location.lat();
+    currentLng = gps.location.lng();
+    
+    jsonDoc["latitude"] = currentLat;
+    jsonDoc["longitude"] = currentLng;
     jsonDoc["gps_valid"] = true;
     jsonDoc["gps_satellites"] = gps.satellites.value();
     jsonDoc["gps_hdop"] = gps.hdop.hdop();
+    
+    // Calcular velocidad basada en GPS
+    if (previousLat != 0.0 && previousLng != 0.0 && lastGPSTime > 0) {
+      float distance = calculateDistance(previousLat, previousLng, currentLat, currentLng);
+      float timeElapsed = (millis() - lastGPSTime) / 1000.0; // en segundos
+      
+      if (timeElapsed > 0) {
+        currentSpeed = distance / timeElapsed; // m/s
+        jsonDoc["gps_speed"] = currentSpeed;
+        jsonDoc["gps_speed_kmh"] = currentSpeed * 3.6; // km/h
+      }
+    }
+    
+    // Actualizar posición anterior
+    previousLat = currentLat;
+    previousLng = currentLng;
+    lastGPSTime = millis();
     gpsValid = true;
   } else {
     jsonDoc["latitude"] = nullptr;
     jsonDoc["longitude"] = nullptr;
     jsonDoc["gps_valid"] = false;
+    jsonDoc["gps_speed"] = 0.0;
+    currentSpeed = 0.0;
   }
 
   // Obtener datos IMU si está disponible
@@ -202,8 +241,17 @@ void sendOptimizedPetData() {
     // Calcular magnitud total del acelerómetro
     imuMagnitude = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
     
-    // Análisis básico de actividad mejorado
-    activity = analyzeActivity(imuMagnitude, gyroX, gyroY, gyroZ);
+    // Actualizar promedio de aceleración para análisis más estable
+    averageAccelMagnitude = ((averageAccelMagnitude * activitySamples) + imuMagnitude) / (activitySamples + 1);
+    if (activitySamples < MAX_ACTIVITY_SAMPLES) {
+      activitySamples++;
+    }
+    
+    // Análisis avanzado de actividad combinando IMU y GPS
+    activity = analyzeAdvancedActivity(averageAccelMagnitude, currentSpeed, gyroX, gyroY, gyroZ, gpsValid);
+  } else {
+    // Sin IMU, usar solo GPS para determinar actividad básica
+    activity = analyzeGPSOnlyActivity(currentSpeed, gpsValid);
   }
 
   // Agregar datos IMU al JSON
@@ -220,6 +268,16 @@ void sendOptimizedPetData() {
   jsonDoc["temperature"] = tempC;
   jsonDoc["activity"] = activity;
   jsonDoc["imu_magnitude"] = imuMagnitude;
+  jsonDoc["imu_average"] = averageAccelMagnitude;
+  
+  // Información adicional del estado del dispositivo
+  jsonDoc["wifi_rssi"] = WiFi.RSSI();
+  jsonDoc["free_heap"] = ESP.getFreeHeap();
+  jsonDoc["uptime_ms"] = millis();
+  
+  // Metadatos de análisis
+  jsonDoc["analysis_method"] = mpuInitialized ? "imu_gps_combined" : "gps_only";
+  jsonDoc["data_quality"] = gpsValid ? "high" : "medium";
 
   // Convertir a string y enviar
   String jsonString;
@@ -233,20 +291,76 @@ void sendOptimizedPetData() {
   }
 }
 
-// Función mejorada para análisis de actividad
-String analyzeActivity(float accelMagnitude, float gyroX, float gyroY, float gyroZ) {
+// Función avanzada para análisis de actividad combinando IMU y GPS
+String analyzeAdvancedActivity(float accelMagnitude, float speed, float gyroX, float gyroY, float gyroZ, bool gpsValid) {
   float gyroMagnitude = sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ);
   
-  // Umbrales calibrados para ESP32C6 con MPU6050
-  if (accelMagnitude > 15.0 && gyroMagnitude > 3.0) {
-    return "running";
-  } else if (accelMagnitude > 12.0 && gyroMagnitude > 1.5) {
-    return "walking";
-  } else if (accelMagnitude > 10.0 && gyroMagnitude > 0.5) {
-    return "standing";
-  } else {
-    return "lying";
+  // Convertir velocidad a km/h para análisis
+  float speedKmh = speed * 3.6;
+  
+  Serial.printf("🔍 Análisis: Accel=%.2f, Speed=%.2f km/h, Gyro=%.2f\n", accelMagnitude, speedKmh, gyroMagnitude);
+  
+  // Prioridad 1: Velocidad muy alta (probable vehículo)
+  if (gpsValid && speedKmh > 15.0) {
+    return "traveling"; // En vehículo/transporte
   }
+  
+  // Prioridad 2: Actividad alta con velocidad moderada (corriendo)
+  if (accelMagnitude > 15.0 && gyroMagnitude > 2.5 && speedKmh >= 6.0 && speedKmh <= 15.0) {
+    return "running";
+  }
+  
+  // Prioridad 3: Actividad moderada con velocidad baja (caminando)
+  if (accelMagnitude > 11.0 && gyroMagnitude > 1.0 && speedKmh >= 1.0 && speedKmh < 6.0) {
+    return "walking";
+  }
+  
+  // Prioridad 4: Actividad mínima o sin movimiento GPS (descansando)
+  if (accelMagnitude <= 11.0 || speedKmh < 1.0) {
+    return "resting";
+  }
+  
+  // Caso por defecto: usar solo IMU si GPS no es confiable
+  if (accelMagnitude > 15.0 && gyroMagnitude > 2.5) {
+    return "running";
+  } else if (accelMagnitude > 11.0 && gyroMagnitude > 1.0) {
+    return "walking";
+  } else {
+    return "resting";
+  }
+}
+
+// Función para análisis basado solo en GPS (cuando IMU no está disponible)
+String analyzeGPSOnlyActivity(float speed, bool gpsValid) {
+  if (!gpsValid) {
+    return "unknown";
+  }
+  
+  float speedKmh = speed * 3.6;
+  
+  if (speedKmh > 15.0) {
+    return "traveling";
+  } else if (speedKmh >= 6.0) {
+    return "running";
+  } else if (speedKmh >= 1.0) {
+    return "walking";
+  } else {
+    return "resting";
+  }
+}
+
+// Función para calcular distancia entre dos puntos GPS (fórmula haversine)
+float calculateDistance(float lat1, float lng1, float lat2, float lng2) {
+  const float R = 6371000; // Radio de la Tierra en metros
+  float dLat = (lat2 - lat1) * PI / 180.0;
+  float dLng = (lng2 - lng1) * PI / 180.0;
+  
+  float a = sin(dLat/2) * sin(dLat/2) +
+            cos(lat1 * PI / 180.0) * cos(lat2 * PI / 180.0) *
+            sin(dLng/2) * sin(dLng/2);
+  float c = 2 * atan2(sqrt(a), sqrt(1-a));
+  
+  return R * c; // Distancia en metros
 }
 
 // Función para calcular nivel de batería (simulado)

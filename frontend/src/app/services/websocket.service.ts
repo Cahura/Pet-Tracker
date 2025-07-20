@@ -8,10 +8,22 @@ export interface PetData {
   timestamp: number;
   coordinates: [number, number];
   battery: number;
-  activity: string;
+  activity: string; // "resting", "walking", "running", "traveling"
   accelerometer: { x: number; y: number; z: number };
   gyroscope: { x: number; y: number; z: number };
   temperature: number;
+  connectionStatus?: string; // Estado de conexión del ESP32C6
+  deviceActive?: boolean; // Si el dispositivo está activo
+  gps_speed?: number; // Velocidad en m/s
+  gps_speed_kmh?: number; // Velocidad en km/h
+  gps_valid?: boolean; // Si el GPS es válido
+  imu_magnitude?: number; // Magnitud del acelerómetro
+  imu_average?: number; // Promedio de magnitud IMU
+  wifi_rssi?: number; // Señal WiFi
+  free_heap?: number; // Memoria disponible
+  uptime_ms?: number; // Tiempo de funcionamiento
+  analysis_method?: string; // Método de análisis usado
+  data_quality?: string; // Calidad de los datos
 }
 
 @Injectable({ providedIn: 'root' })

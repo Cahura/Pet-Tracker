@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
 import { WebSocketService, PetData } from '../services/websocket.service';
+import { PetSelectionService } from '../services/pet-selection.service';
 
 @Component({
   selector: 'app-map-simple',
@@ -541,14 +542,9 @@ import { WebSocketService, PetData } from '../services/websocket.service';
     }
 
     /* Estilos para estados del marcador (optimizados para rendimiento) */
-    .pet-marker.state-lying .pet-avatar {
-      animation: lying-pulse 3s ease-in-out infinite;
+    .pet-marker.state-resting .pet-avatar {
+      animation: resting-pulse 3s ease-in-out infinite;
       will-change: transform, opacity;
-    }
-
-    .pet-marker.state-standing .pet-avatar {
-      animation: standing-pulse 2s ease-in-out infinite;
-      will-change: transform;
     }
 
     .pet-marker.state-walking .pet-avatar {
@@ -561,13 +557,23 @@ import { WebSocketService, PetData } from '../services/websocket.service';
       will-change: transform;
     }
 
+    .pet-marker.state-traveling .pet-avatar {
+      animation: traveling-glide 2s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    .pet-marker.state-disconnected .pet-avatar {
+      animation: disconnected-fade 2s ease-in-out infinite;
+      will-change: opacity;
+    }
+
     /* Optimización de animaciones para hardware acceleration */
     .pet-avatar {
       transform: translateZ(0); /* Force hardware acceleration */
       backface-visibility: hidden;
     }
 
-    @keyframes lying-pulse {
+    @keyframes resting-pulse {
       0%, 100% { 
         transform: translateZ(0) scale(1); 
         opacity: 0.9; 
@@ -576,11 +582,6 @@ import { WebSocketService, PetData } from '../services/websocket.service';
         transform: translateZ(0) scale(1.03); 
         opacity: 1; 
       }
-    }
-
-    @keyframes standing-pulse {
-      0%, 100% { transform: translateZ(0) scale(1); }
-      50% { transform: translateZ(0) scale(1.05); }
     }
 
     @keyframes walking-bounce {
@@ -592,6 +593,23 @@ import { WebSocketService, PetData } from '../services/websocket.service';
       0%, 100% { transform: translateZ(0) translateX(0); }
       25% { transform: translateZ(0) translateX(-1px); }
       75% { transform: translateZ(0) translateX(1px); }
+    }
+
+    @keyframes traveling-glide {
+      0%, 100% { 
+        transform: translateZ(0) translateX(0) scale(1); 
+      }
+      33% { 
+        transform: translateZ(0) translateX(2px) scale(1.02); 
+      }
+      66% { 
+        transform: translateZ(0) translateX(-2px) scale(1.02); 
+      }
+    }
+
+    @keyframes disconnected-fade {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.8; }
     }
 
     /* Responsive design */
@@ -850,7 +868,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   
   public isLoading = true;
   public error: string | null = null;
-  public isRealtimeConnected = false;
+  public isRealtimeConnected = false; // Estado de conexión WebSocket
+  public isESP32Connected = false; // Estado específico del ESP32C6 enviando datos
+  private lastESP32DataTime: number = 0; // Timestamp de última recepción de datos del ESP32
+  private esp32TimeoutMs = 30000; // 30 segundos de timeout para considerar desconectado
   public isProduction = false;
   
   // Datos en tiempo real optimizados
@@ -871,7 +892,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   constructor(
     private webSocketService: WebSocketService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private petSelectionService: PetSelectionService
   ) {}
 
   ngOnInit() {
@@ -1682,8 +1704,40 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Métodos para el servicio en tiempo real
   private initializeWebSocketService(): void {
-    const sub = this.webSocketService.petData$.subscribe((data: PetData | null) => {
+    // Suscribirse al estado de conexión WebSocket
+    const connectionSub = this.webSocketService.connectionStatus$.subscribe((isConnected: boolean) => {
+      this.isRealtimeConnected = isConnected;
+      console.log('🔄 Map: WebSocket connection status updated:', isConnected);
+      
+      // Si el WebSocket se desconecta, el ESP32 también se considera desconectado
+      if (!isConnected) {
+        this.isESP32Connected = false;
+        if (this.selectedPet && this.selectedPet.name === 'Max') {
+          this.petSelectionService.updatePetStatus(this.selectedPet.id, 'offline');
+          this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'disconnected');
+        }
+      }
+    });
+    this.subscriptions.push(connectionSub);
+
+    // Suscribirse a los datos de la mascota (ESP32C6)
+    const dataSub = this.webSocketService.petData$.subscribe((data: PetData | null) => {
       if (data) {
+        // Actualizar timestamp de última recepción de datos del ESP32
+        this.lastESP32DataTime = Date.now();
+        
+        // Marcar ESP32 como conectado ya que está enviando datos
+        if (!this.isESP32Connected) {
+          this.isESP32Connected = true;
+          console.log('🟢 ESP32C6 started sending data - marking as connected');
+          
+          // Actualizar estado de la mascota Max
+          if (this.selectedPet && this.selectedPet.name === 'Max') {
+            this.petSelectionService.updatePetStatus(this.selectedPet.id, 'online');
+            this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'resting');
+          }
+        }
+        
         // Actualizar ubicación
         this.lastLocationUpdate = {
           petId: data.petId.toString(),
@@ -1692,6 +1746,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           timestamp: data.timestamp
         };
         this.updatePetLocation(this.lastLocationUpdate);
+        
         // Actualizar IMU
         this.lastIMUUpdate = {
           petId: data.petId.toString(),
@@ -1707,7 +1762,29 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         this.updatePetActivity(this.lastIMUUpdate);
       }
     });
-    this.subscriptions.push(sub);
+    this.subscriptions.push(dataSub);
+
+    // Timer para verificar timeout del ESP32C6
+    const timeoutCheck = setInterval(() => {
+      if (this.isESP32Connected && this.lastESP32DataTime > 0) {
+        const timeSinceLastData = Date.now() - this.lastESP32DataTime;
+        if (timeSinceLastData > this.esp32TimeoutMs) {
+          console.log('🔴 ESP32C6 data timeout - marking as disconnected');
+          this.isESP32Connected = false;
+          
+          // Actualizar estado de la mascota Max
+          if (this.selectedPet && this.selectedPet.name === 'Max') {
+            this.petSelectionService.updatePetStatus(this.selectedPet.id, 'offline');
+            this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'disconnected');
+          }
+        }
+      }
+    }, 5000); // Verificar cada 5 segundos
+
+    // Agregar cleanup del timer
+    this.subscriptions.push({
+      unsubscribe: () => clearInterval(timeoutCheck)
+    } as Subscription);
   }
 
   private updatePetLocation(locationData: any): void {
@@ -1813,8 +1890,15 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         
         if (currentState !== imuData.activity) {
           // Actualizar clases CSS según el estado con transición suave
-          markerElement.classList.remove('state-lying', 'state-standing', 'state-walking', 'state-running');
+          markerElement.classList.remove('state-resting', 'state-walking', 'state-running', 'state-traveling', 'state-disconnected');
           markerElement.classList.add(`state-${imuData.activity}`);
+          
+          // Actualizar el estado en el servicio
+          if (this.selectedPet && this.selectedPet.name === 'Max') {
+            const validActivity = imuData.activity as 'resting' | 'walking' | 'running' | 'traveling';
+            this.petSelectionService.updatePetActivityState(this.selectedPet.id, validActivity);
+            console.log(`🔄 Max activity state updated in service: ${validActivity}`);
+          }
           
           // Trigger a subtle animation for activity change
           this.triggerActivityChangeAnimation(markerElement, imuData.activity);
@@ -1932,17 +2016,25 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   public getActivityIcon(activityState: string): string {
     switch (activityState) {
-      case 'lying': return 'fa-bed';
-      case 'standing': return 'fa-standing';
+      case 'resting': return 'fa-bed';
       case 'walking': return 'fa-walking';
       case 'running': return 'fa-running';
+      case 'traveling': return 'fa-car';
+      case 'disconnected': return 'fa-wifi-slash';
       default: return 'fa-question';
     }
   }
 
-  // Forzar estado de actividad a 'standing' para el popup de la mascota
+  // Texto descriptivo para cada estado de actividad
   public getActivityText(activityState: string): string {
-    return 'De pie'; // Siempre mostrar "De pie" en el popup
+    switch (activityState) {
+      case 'resting': return 'Descansando';
+      case 'walking': return 'Caminando';
+      case 'running': return 'Corriendo';
+      case 'traveling': return 'En transporte';
+      case 'disconnected': return 'Desconectado';
+      default: return 'Estado desconocido';
+    }
   }
 
   // Métodos para el popup de información con animaciones
@@ -2103,10 +2195,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   // Método para obtener el estado de conexión (diferente del estado de actividad)
   public getConnectionStatus(pet: any): { isConnected: boolean, status: string } {
     if (pet.name === 'Max') {
-      // Para Max: depende de la conexión real del WebSocket/ESP32
+      // Para Max: depende de si el ESP32C6 está enviando datos reales
       return {
-        isConnected: this.isRealtimeConnected,
-        status: this.isRealtimeConnected ? 'En vivo' : 'Desconectado'
+        isConnected: this.isESP32Connected,
+        status: this.isESP32Connected ? 'En vivo' : 'Desconectado'
       };
     } else {
       // Para mascotas demo: usar la propiedad status (online/offline)

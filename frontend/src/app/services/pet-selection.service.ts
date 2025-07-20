@@ -14,7 +14,7 @@ export interface PetData {
   color: string; // Primary color for the pet
   gradient: string; // Gradient for avatar background
   photoUrl?: string; // URL de la foto principal de la mascota
-  activityState?: 'lying' | 'standing' | 'walking' | 'running' | 'disconnected'; // Estado fijo para mascotas demo
+  activityState?: 'resting' | 'walking' | 'running' | 'traveling' | 'disconnected'; // Estado de actividad actualizado
   imuData?: IMUData; // Datos del sensor IMU en tiempo real
   activityHistory?: ActivityRecord[]; // Historial de actividad
 }
@@ -40,7 +40,7 @@ export interface IMUData {
 }
 
 export interface ActivityRecord {
-  state: 'lying' | 'standing' | 'walking' | 'running';
+  state: 'resting' | 'walking' | 'running' | 'traveling';
   confidence: number;
   duration: number; // en minutos
   startTime: Date;
@@ -65,7 +65,7 @@ export class PetSelectionService {
       name: 'Max', 
       type: 'dog', 
       breed: 'Golden Retriever', 
-      status: 'online', 
+      status: 'offline', 
       battery: 78, 
       location: 'UPC Monterrico, Lima', 
       coordinates: [-76.96358, -12.10426], // UPC Monterrico
@@ -73,7 +73,7 @@ export class PetSelectionService {
       color: '#FF6B35',
       gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
       photoUrl: '/assets/mascotas/Golden_Retriever.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'standing' // Max recibe datos reales del ESP32
+      activityState: 'resting' // Estado de actividad inicial: descansando hasta conectar ESP32C6
     },
     { 
       id: 2, 
@@ -103,7 +103,7 @@ export class PetSelectionService {
       color: '#3498DB',
       gradient: 'linear-gradient(135deg, #3498DB, #2980B9)',
       photoUrl: '/assets/mascotas/Pastor_Aleman.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'standing' // Estado de actividad: parado (desconectado pero último estado conocido)
+      activityState: 'walking' // Estado de actividad: caminando por el parque
     },
     { 
       id: 4, 
@@ -118,7 +118,7 @@ export class PetSelectionService {
       color: '#E74C3C',
       gradient: 'linear-gradient(135deg, #E74C3C, #C0392B)',
       photoUrl: '/assets/mascotas/Persa.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'lying' // Estado: descansando en casa cómodamente
+      activityState: 'resting' // Estado: descansando en casa cómodamente
     }
   ];
 
@@ -172,7 +172,7 @@ export class PetSelectionService {
     }
   }
 
-  updatePetActivityState(petId: number, activityState: 'lying' | 'standing' | 'walking' | 'running' | 'disconnected') {
+  updatePetActivityState(petId: number, activityState: 'resting' | 'walking' | 'running' | 'traveling' | 'disconnected') {
     const pet = this.demoAnimals.find(p => p.id === petId);
     if (pet) {
       pet.activityState = activityState;
@@ -219,5 +219,19 @@ export class PetSelectionService {
       activeTime: walkingMinutes + runningMinutes,
       restTime: totalMinutes - (walkingMinutes + runningMinutes)
     };
+  }
+
+  // Método para actualizar el estado de conexión de las mascotas en tiempo real
+  updatePetStatus(petId: number, status: 'online' | 'offline'): void {
+    const petIndex = this.demoAnimals.findIndex(pet => pet.id === petId);
+    if (petIndex !== -1) {
+      this.demoAnimals[petIndex].status = status;
+      console.log(`🔄 Pet ${this.demoAnimals[petIndex].name} status updated to: ${status}`);
+      
+      // Si es la mascota actualmente seleccionada, actualizar el subject
+      if (this.selectedPetSubject.value?.id === petId) {
+        this.selectedPetSubject.next(this.demoAnimals[petIndex]);
+      }
+    }
   }
 }

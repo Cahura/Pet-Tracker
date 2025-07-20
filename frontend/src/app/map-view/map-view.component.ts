@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PetSelectionService, PetData } from '../services/pet-selection.service';
 import { AuthService } from '../services/auth.service';
+import { WebSocketService } from '../services/websocket.service';
 import { SafeZonesComponent } from '../components/safe-zones.component';
 import { PetHistoryComponent } from '../components/pet-history.component';
 import { PetPhotosComponent } from '../components/pet-photos.component';
@@ -307,6 +308,8 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   showAlertsOnMapActive = false; // Estado para alertas en mapa
   showPhotosOnMapActive = false; // Estado para fotos en mapa
   private petSelectionSubscription?: Subscription;
+  private connectionStatusSubscription?: Subscription;
+  private previousConnectionStatus: boolean | null = null;
 
   // Lista de mascotas demo - ahora viene del servicio
   demoAnimals: PetData[] = [];
@@ -316,7 +319,8 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
     private petSelectionService: PetSelectionService,
     private router: Router,
     private authService: AuthService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private webSocketService: WebSocketService
   ) {
     // Inicializar con la mascota seleccionada o la por defecto
     this.demoAnimals = this.petSelectionService.getDemoAnimals();
@@ -341,12 +345,36 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
         }
       }
     });
+
+    // Suscribirse al estado de conexión del WebSocket para Max (ESP32C6)
+    if (this.currentAnimal.name === 'Max') {
+      // Suscribirse a los cambios en la mascota para detectar cambios de estado
+      this.connectionStatusSubscription = this.petSelectionService.selectedPet$.subscribe(updatedPet => {
+        if (updatedPet && updatedPet.name === 'Max') {
+          const isNowConnected = updatedPet.status === 'online';
+          
+          // Solo notificar cambios después de la inicialización
+          if (this.previousConnectionStatus !== null && this.previousConnectionStatus !== isNowConnected) {
+            if (isNowConnected) {
+              this.notificationService.showConnectionRestored(this.currentAnimal.name);
+            } else {
+              this.notificationService.showConnectionInactive(this.currentAnimal.name);
+            }
+          }
+          
+          this.previousConnectionStatus = isNowConnected;
+        }
+      });
+    }
   }
 
   ngOnDestroy() {
-    // Limpiar suscripción
+    // Limpiar suscripciones
     if (this.petSelectionSubscription) {
       this.petSelectionSubscription.unsubscribe();
+    }
+    if (this.connectionStatusSubscription) {
+      this.connectionStatusSubscription.unsubscribe();
     }
   }
 
@@ -361,8 +389,8 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   // Método para obtener el texto de última actualización
   getLastUpdateText(): string {
     if (this.currentAnimal?.name === 'Max') {
-      // Para Max: mostrar tiempo real de última actualización
-      return this.mapComponent?.isRealtimeConnected ? 'Ahora' : 'Sin datos';
+      // Para Max: mostrar tiempo real basado en si el ESP32C6 está enviando datos
+      return this.mapComponent?.isESP32Connected ? 'Ahora' : 'Sin datos';
     } else {
       // Para mascotas demo: mostrar tiempo fijo
       return 'Hace 5 min';
@@ -378,18 +406,22 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
       }
     }, 100);
 
-    // Mostrar notificaciones de bienvenida después de que la vista esté ready
+    // Mostrar notificaciones basadas en el estado real de conexión
     setTimeout(() => {
-      // Desactivado para producción - solo alertas importantes
-      // this.notificationService.showWelcomeNotifications(this.currentAnimal.name);
-      
-      // Solo mostrar alertas importantes de la mascota
+      // Solo mostrar notificaciones importantes basadas en conexión real
       setTimeout(() => {
-        this.notificationService.showPetAlert(
-          this.currentAnimal.name,
-          'Sistema de seguimiento activo'
-        );
-      }, 8000);
+        if (this.currentAnimal.name === 'Max') {
+          // Para Max: por defecto está desconectado hasta que ESP32C6 envíe datos
+          // La conexión WebSocket puede estar activa pero no hay datos del ESP32C6
+          this.notificationService.showConnectionInactive(this.currentAnimal.name);
+        } else {
+          // Para mascotas demo: mostrar notificación genérica
+          this.notificationService.showPetAlert(
+            this.currentAnimal.name,
+            'Datos de demostración - Mascota simulada'
+          );
+        }
+      }, 3000);
     }, 1500);
   }
 

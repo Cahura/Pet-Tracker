@@ -46,11 +46,11 @@ import { Subscription } from 'rxjs';
           <div class="status-island liquid-glass animate-fade-in">
             <div class="status-content">
               <div class="status-indicator">
-                <div class="indicator-dot animate-pulse"></div>
-                <span>En vivo</span>
+                <div class="indicator-dot animate-pulse" [class.connected]="getConnectionStatus().isConnected"></div>
+                <span>{{ getConnectionStatus().status }}</span>
               </div>
               <div class="last-update">
-                Hace 1 min
+                {{ getLastUpdateText() }}
               </div>
             </div>
           </div>
@@ -100,7 +100,7 @@ import { Subscription } from 'rxjs';
           <div class="sheet-expanded" [class.hidden]="!isSheetExpanded">
             <div class="pet-info-card">
               <div class="pet-avatar" [style.background]="currentAnimal.gradient">
-                <div class="pet-status" [class]="currentAnimal.status"></div>
+                <div class="pet-status" [class]="getConnectionStatus().isConnected ? 'online' : 'offline'"></div>
                 <i [class]="currentAnimal.icon" style="color: white; font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));"></i>
               </div>
               <div class="pet-details">
@@ -110,8 +110,8 @@ import { Subscription } from 'rxjs';
                   <div class="stat">
                     <i class="fas fa-signal"></i>
                     <div class="status-indicator-inline">
-                      <div class="status-dot" [class]="currentAnimal.status"></div>
-                      <span>{{ currentAnimal.status === 'online' ? 'Conectado' : 'Desconectado' }}</span>
+                      <div class="status-dot" [class]="getConnectionStatus().isConnected ? 'online' : 'offline'"></div>
+                      <span>{{ getConnectionStatus().isConnected ? 'Conectado' : 'Desconectado' }}</span>
                     </div>
                   </div>
                   <div class="stat">
@@ -335,10 +335,9 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
         console.log('Pet changed to:', selectedPet);
         this.currentAnimal = selectedPet;
         
-        // Actualizar el mapa si está disponible
+        // Inicializar el mapa con la nueva mascota si está disponible
         if (this.mapComponent) {
-          this.mapComponent.updatePetMarker(selectedPet);
-          this.mapComponent.updateLocation(selectedPet.coordinates);
+          this.mapComponent.initializeWithAnimal(selectedPet);
         }
       }
     });
@@ -348,6 +347,25 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
     // Limpiar suscripción
     if (this.petSelectionSubscription) {
       this.petSelectionSubscription.unsubscribe();
+    }
+  }
+
+  // Método para obtener el estado de conexión desde el mapa
+  getConnectionStatus(): { isConnected: boolean, status: string } {
+    if (this.mapComponent && this.currentAnimal) {
+      return this.mapComponent.getConnectionStatus(this.currentAnimal);
+    }
+    return { isConnected: false, status: 'Cargando...' };
+  }
+
+  // Método para obtener el texto de última actualización
+  getLastUpdateText(): string {
+    if (this.currentAnimal?.name === 'Max') {
+      // Para Max: mostrar tiempo real de última actualización
+      return this.mapComponent?.isRealtimeConnected ? 'Ahora' : 'Sin datos';
+    } else {
+      // Para mascotas demo: mostrar tiempo fijo
+      return 'Hace 5 min';
     }
   }
 

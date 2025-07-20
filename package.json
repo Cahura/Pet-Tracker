@@ -8,6 +8,8 @@
     "start-backend": "cd backend && node server.js",
     "dev": "concurrently \"npm run start-backend\" \"npm run start\"",
     "install-all": "cd frontend && npm install && cd ../backend && npm install",
+    "clean-install": "npm run clean && npm run install-all",
+    "clean": "cd frontend && rm -rf node_modules package-lock.json && cd ../backend && rm -rf node_modules package-lock.json",
     "railway:build": "npm run install-frontend && npm run build-frontend && npm run install-backend",
     "railway:start": "cd backend && npm start",
     "install-frontend": "cd frontend && npm ci",

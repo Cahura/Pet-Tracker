@@ -88,7 +88,7 @@ export class PetSelectionService {
       color: '#9B59B6',
       gradient: 'linear-gradient(135deg, #9B59B6, #8E44AD)',
       photoUrl: '/assets/mascotas/Siames.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'walking' // Estado: explorando el parque
+      activityState: 'walking' // Estado: explorando y caminando por el parque
     },
     { 
       id: 3, 
@@ -103,7 +103,7 @@ export class PetSelectionService {
       color: '#3498DB',
       gradient: 'linear-gradient(135deg, #3498DB, #2980B9)',
       photoUrl: '/assets/mascotas/Pastor_Aleman.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'disconnected' // Estado fijo: desconectado - EJEMPLO OFFLINE
+      activityState: 'standing' // Estado de actividad: parado (desconectado pero último estado conocido)
     },
     { 
       id: 4, 
@@ -118,7 +118,7 @@ export class PetSelectionService {
       color: '#E74C3C',
       gradient: 'linear-gradient(135deg, #E74C3C, #C0392B)',
       photoUrl: '/assets/mascotas/Persa.jpg', // Cambiar a .jpg cuando copies la imagen real
-      activityState: 'standing' // Estado fijo: parada
+      activityState: 'lying' // Estado: descansando en casa cómodamente
     }
   ];
 

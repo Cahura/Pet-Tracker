@@ -75,11 +75,6 @@ import { WebSocketService, PetData } from '../services/websocket.service';
               <i class="fas fa-clock"></i>
               <span>{{ selectedPet?.lastActivity || 'Hace 5 min' }}</span>
             </div>
-            
-            <div class="data-row connection-status" [class.online]="isRealtimeConnected">
-              <i class="fas" [class]="isRealtimeConnected ? 'fa-wifi' : 'fa-wifi-slash'"></i>
-              <span>{{ isRealtimeConnected ? 'Conectado' : 'Desconectado' }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -399,6 +394,18 @@ import { WebSocketService, PetData } from '../services/websocket.service';
       background: linear-gradient(135deg, rgba(52, 199, 89, 0.2), rgba(48, 209, 88, 0.2));
       border: 1px solid rgba(52, 199, 89, 0.3);
       color: #34C759;
+    }
+
+    .pet-status-indicator.status-walking {
+      background: linear-gradient(135deg, rgba(88, 86, 214, 0.2), rgba(94, 92, 230, 0.2));
+      border: 1px solid rgba(88, 86, 214, 0.3);
+      color: #5856D6;
+    }
+
+    .pet-status-indicator.status-running {
+      background: linear-gradient(135deg, rgba(255, 45, 85, 0.2), rgba(255, 55, 95, 0.2));
+      border: 1px solid rgba(255, 45, 85, 0.3);
+      color: #FF2D55;
     }
 
     .pet-status-indicator.status-disconnected {
@@ -858,18 +865,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private popupTimeout: any = null;
   private isPopupHovered = false;
   
-  // Pet location (Santa Isabel for Luna - coordenadas genéricas para repo)
-  // Pet location fija para Max: 12.10426° S, 76.96358° W
-  // Pet location fija para Max: UPC Monterrico, Lima-Perú
-  private petLocation: [number, number] = [-76.9717, -12.0891]; // UPC Monterrico
-  // Coordenadas destino: Av. Primavera (12.10421° S, 76.96456° W)
-  private primaveraCoords: [number, number] = [-76.96456, -12.10421];
-  // Coordenadas de inicio y fin para la animación de Max
-  private maxStartCoords: [number, number] = [-76.96358, -12.10426]; // Inicio
-  private maxEndCoords: [number, number] = [-76.96456, -12.10421];   // Fin
-  private animationInterval: any = null;
-  private animationSteps = 60; // 60 pasos, cada uno simula 10 minutos (total 10 horas)
-  private animationStep = 0;
+  // Ubicación actual de la mascota (se actualiza según la mascota seleccionada)
+  private petLocation: [number, number] = [-76.96358, -12.10426]; // Por defecto Max - UPC Monterrico
+  private currentPetData: any = null;
 
   constructor(
     private webSocketService: WebSocketService,
@@ -878,10 +876,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isProduction = false; // Será reemplazado por environment.production
-    this.petLocation = this.maxStartCoords;
     this.initializeMap();
     this.initializeWebSocketService();
-    this.startMaxAnimation();
   }
 
   ngOnDestroy() {
@@ -894,9 +890,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     if (this.map) {
       this.map.remove();
     }
-    
-    // Desconectar servicio en tiempo real
-    // No es necesario desconectar WebSocketService, se reconecta automáticamente
   }
 
   private async initializeMap() {
@@ -1089,10 +1082,18 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     console.log('initializeWithAnimal called with animal:', animal);
     
     if (animal) {
+      // Guardar datos de la mascota actual
+      this.currentPetData = animal;
+      
       // Update location and add marker with the specific animal data
       if (animal.coordinates) {
         this.petLocation = animal.coordinates;
         this.updateLocation(animal.coordinates);
+      }
+      
+      // Remove existing marker if any
+      if (this.petMarker) {
+        this.petMarker.remove();
       }
       
       // Create the marker with the specific animal
@@ -1710,30 +1711,42 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   private updatePetLocation(locationData: any): void {
-    // Coordenadas fijas para Max: UPC Monterrico
-    const newCoordinates: [number, number] = [-76.9717, -12.0891];
-    console.log('Actualizando ubicación de mascota (fija UPC Monterrico):', newCoordinates);
-    this.petLocation = newCoordinates;
-    if (this.petMarker && this.map) {
-      this.petMarker.setLngLat(newCoordinates);
-      const currentCenter = this.map.getCenter();
-      const distance = this.calculateDistance(
-        [currentCenter.lng, currentCenter.lat],
-        newCoordinates
-      );
-      if (distance > 0.002) {
-        this.map.flyTo({
-          center: newCoordinates,
-          duration: 1000,
-          essential: true
-        });
+    // Solo actualizar ubicación si es Max (petId: 1) y tenemos datos GPS válidos
+    if (this.currentPetData && this.currentPetData.name === 'Max' && locationData.petId === '1') {
+      let newCoordinates: [number, number];
+      
+      // Usar coordenadas del ESP32 (ya procesadas por el backend)
+      if (locationData.longitude && locationData.latitude) {
+        newCoordinates = [locationData.longitude, locationData.latitude];
+        console.log('Actualizando ubicación de Max con GPS del ESP32:', newCoordinates);
+      } else {
+        // Fallback a coordenadas fijas si no hay GPS
+        newCoordinates = [-76.96358, -12.10426]; // UPC Monterrico
+        console.log('Usando coordenadas fijas para Max (sin GPS):', newCoordinates);
       }
       
-      // Agregar animación de highlight más sutil para actualizaciones frecuentes
-      this.subtleLocationUpdate();
-    } else if (this.map) {
-      // Si no existe marcador, crear uno nuevo con los datos actuales
-      this.createRealtimePetMarker(locationData);
+      this.petLocation = newCoordinates;
+      
+      if (this.petMarker && this.map) {
+        this.petMarker.setLngLat(newCoordinates);
+        
+        // Solo centrar el mapa si está muy lejos
+        const currentCenter = this.map.getCenter();
+        const distance = this.calculateDistance(
+          [currentCenter.lng, currentCenter.lat],
+          newCoordinates
+        );
+        if (distance > 0.002) {
+          this.map.flyTo({
+            center: newCoordinates,
+            duration: 1000,
+            essential: true
+          });
+        }
+        
+        // Agregar animación sutil para indicar actualización
+        this.subtleLocationUpdate();
+      }
     }
   }
 
@@ -1907,20 +1920,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createRealtimePetMarker(locationData: any): void {
-    const animal = {
-      name: 'Mascota GPS',
-      type: 'dog',
-      icon: 'fas fa-dog',
-      gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
-      color: '#FF6B35',
-      status: this.lastBatteryUpdate?.status || 'online',
-      coordinates: [locationData.longitude, locationData.latitude] as [number, number]
-    };
-    
-    this.addPetMarkerWithAnimal(animal);
-  }
-
   // Métodos utilitarios para la UI
   public formatTimestamp(timestamp: number): string {
     const date = new Date(timestamp);
@@ -2008,16 +2007,57 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Nuevo método para obtener información del estado de la mascota
+  // Método para obtener información del estado de la mascota
   public getPetStatusInfo(pet: any): { class: string, icon: string, text: string } {
-    // Forzar que siempre muestre "Conectado" en el popup
-    return {
-      class: 'status-active',
-      icon: '✅',
-      text: 'Conectado'
-    };
-    /*
-    // Si quieres mantener lógica original, comenta el bloque anterior y descomenta este:
+    // Para Max: usar estado dinámico del ESP32 si está disponible
+    if (pet.name === 'Max') {
+      // Obtener estado actual del marcador si existe
+      if (this.petMarker) {
+        const markerElement = this.petMarker.getElement();
+        const currentState = markerElement.className.match(/state-(\w+)/)?.[1];
+        
+        switch (currentState) {
+          case 'lying':
+            return {
+              class: 'status-lying',
+              icon: '🛌',
+              text: 'Descansando'
+            };
+          case 'standing':
+            return {
+              class: 'status-standing',
+              icon: '🚶',
+              text: 'De pie'
+            };
+          case 'walking':
+            return {
+              class: 'status-walking',
+              icon: '🚶‍♂️',
+              text: 'Caminando'
+            };
+          case 'running':
+            return {
+              class: 'status-running',
+              icon: '🏃‍♂️',
+              text: 'Corriendo'
+            };
+          default:
+            return {
+              class: 'status-standing',
+              icon: '🚶',
+              text: 'De pie'
+            };
+        }
+      }
+      // Fallback para Max si no hay marcador
+      return {
+        class: 'status-standing',
+        icon: '🚶',
+        text: 'De pie'
+      };
+    }
+    
+    // Para mascotas demo: usar estados fijos según el activityState
     switch (pet.activityState) {
       case 'lying':
         return {
@@ -2031,20 +2071,51 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           icon: '🚶',
           text: 'De pie'
         };
-      case 'disconnected':
+      case 'walking':
         return {
-          class: 'status-disconnected',
-          icon: '📵',
-          text: 'Desconectado'
+          class: 'status-walking',
+          icon: '🚶‍♂️',
+          text: 'Caminando'
+        };
+      case 'running':
+        return {
+          class: 'status-running',
+          icon: '🏃‍♂️',
+          text: 'Corriendo'
+        };
+      case 'disconnected':
+        // Para mascotas desconectadas, mostrar su último estado conocido de actividad
+        // En lugar de mostrar "Desconectado", mostrar "Parado" como estado por defecto
+        return {
+          class: 'status-standing',
+          icon: '�',
+          text: 'Parado'
         };
       default:
         return {
-          class: 'status-active',
-          icon: '✅',
-          text: 'Conectado'
+          class: 'status-standing',
+          icon: '🚶',
+          text: 'De pie'
         };
     }
-    */
+  }
+
+  // Método para obtener el estado de conexión (diferente del estado de actividad)
+  public getConnectionStatus(pet: any): { isConnected: boolean, status: string } {
+    if (pet.name === 'Max') {
+      // Para Max: depende de la conexión real del WebSocket/ESP32
+      return {
+        isConnected: this.isRealtimeConnected,
+        status: this.isRealtimeConnected ? 'En vivo' : 'Desconectado'
+      };
+    } else {
+      // Para mascotas demo: usar la propiedad status (online/offline)
+      const isConnected = pet.status === 'online';
+      return {
+        isConnected: isConnected,
+        status: isConnected ? 'Demo' : 'Desconectado'
+      };
+    }
   }
 
   // Método para mostrar la ubicación del usuario con avatar de persona y animación pop
@@ -2148,47 +2219,30 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }, 200);
   }
 
-  // Animación para mover lentamente la ubicación de Max
-  private startMaxAnimation(): void {
-    if (this.animationInterval) {
-      clearInterval(this.animationInterval);
-    }
-    this.animationStep = 0;
-    const start = this.maxStartCoords;
-    const end = this.maxEndCoords;
-    this.animationInterval = setInterval(() => {
-      this.animationStep++;
-      if (this.animationStep > this.animationSteps) {
-        clearInterval(this.animationInterval);
-        this.petLocation = end;
-        this.updatePetMarker(end);
+  // Actualiza el marcador de la mascota en el mapa (solo para Max con datos del ESP32)
+  public updatePetMarker(data: [number, number] | any): void {
+    // Solo actualizar ubicación si es Max y los datos vienen del ESP32
+    if (this.currentPetData && this.currentPetData.name === 'Max') {
+      let coords: [number, number] | undefined;
+      
+      if (Array.isArray(data) && data.length === 2 && typeof data[0] === 'number' && typeof data[1] === 'number') {
+        coords = [data[0], data[1]];
+      } else if (data && Array.isArray(data.coordinates) && data.coordinates.length === 2) {
+        coords = [data.coordinates[0], data.coordinates[1]];
+      } else {
         return;
       }
-      const lng = start[0] + (end[0] - start[0]) * (this.animationStep / this.animationSteps);
-      const lat = start[1] + (end[1] - start[1]) * (this.animationStep / this.animationSteps);
-      const newCoords: [number, number] = [lng, lat];
-      this.petLocation = newCoords;
-      this.updatePetMarker(newCoords);
-    }, 10000); // 10,000ms (10 segundos) por paso, cada paso simula 10 minutos
-  }
-
-  // Actualiza el marcador de la mascota en el mapa
-  public updatePetMarker(data: [number, number] | any): void {
-    let coords: [number, number] | undefined;
-    if (Array.isArray(data) && data.length === 2 && typeof data[0] === 'number' && typeof data[1] === 'number') {
-      coords = [data[0], data[1]];
-    } else if (data && Array.isArray(data.coordinates) && data.coordinates.length === 2) {
-      coords = [data.coordinates[0], data.coordinates[1]];
-    } else {
-      return;
-    }
-    if (this.petMarker && this.map && coords) {
-      this.petMarker.setLngLat(coords);
-      // Solo mover el centro si está lejos
-      const currentCenter = this.map.getCenter();
-      const distance = this.calculateDistance([currentCenter.lng, currentCenter.lat], coords);
-      if (distance > 0.002) {
-        this.map.flyTo({ center: coords, duration: 1000, essential: true });
+      
+      if (this.petMarker && this.map && coords) {
+        this.petLocation = coords;
+        this.petMarker.setLngLat(coords);
+        
+        // Solo mover el centro si está lejos
+        const currentCenter = this.map.getCenter();
+        const distance = this.calculateDistance([currentCenter.lng, currentCenter.lat], coords);
+        if (distance > 0.002) {
+          this.map.flyTo({ center: coords, duration: 1000, essential: true });
+        }
       }
     }
   }

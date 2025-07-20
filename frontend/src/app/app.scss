@@ -904,11 +904,17 @@ $desktop: 1200px;  // Desktop real
     .indicator-dot {
       width: 7px;
       height: 7px;
-      background: var(--success-color);
+      background: var(--error-color);
       border-radius: 50%;
-      border: 1px solid rgba(52, 199, 89, 0.3);
-      box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
       animation: pulse-dot 2s infinite;
+      
+      &.connected {
+        background: var(--success-color);
+        border: 1px solid rgba(52, 199, 89, 0.3);
+        box-shadow: 0 0 8px rgba(52, 199, 89, 0.4);
+      }
       
       @include mobile {
         width: 6px;

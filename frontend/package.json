@@ -34,11 +34,8 @@
     "@angular/router": "^20.0.0",
     "@fortawesome/fontawesome-free": "^6.7.2",
     "animate.css": "^4.1.1",
-    "laravel-echo": "^2.1.6",
     "mapbox-gl": "^3.13.0",
-    "pusher-js": "^8.4.0",
     "rxjs": "~7.8.0",
-    "socket.io-client": "^4.8.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },

@@ -1,3 +1,10 @@
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
 // Función para analizar datos del IMU y determinar el estado de actividad
 function analyzeIMUData(imuData) {
   const { accelerometer, gyroscope } = imuData;
@@ -57,60 +64,174 @@ function analyzeIMUData(imuData) {
   };
 }
 
-const express = require('express');
+// Función para validar datos de entrada
+function validatePetData(data) {
+  return data && 
+         typeof data.petId === 'number' &&
+         typeof data.deviceId === 'string' &&
+         data.accelerometer && 
+         data.gyroscope &&
+         typeof data.accelerometer.x === 'number' &&
+         typeof data.accelerometer.y === 'number' &&
+         typeof data.accelerometer.z === 'number' &&
+         typeof data.gyroscope.x === 'number' &&
+         typeof data.gyroscope.y === 'number' &&
+         typeof data.gyroscope.z === 'number';
+}
 
-const http = require('http');
-const WebSocket = require('ws');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
-
+// Configuración del servidor
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server, path: '/ws' });
-
-let clients = new Set();
-
-wss.on('connection', (ws, req) => {
-  clients.add(ws);
-  ws.on('message', (message) => {
-    let fixedMessage = message;
-    try {
-      const data = JSON.parse(message);
-      // Si es Max (petId: 1), fijar coordenadas
-      if (data.petId === 1) {
-        data.latitude = -12.10426;
-        data.longitude = -76.96358;
-        // Si usa 'coordinates' también
-        data.coordinates = [-76.96358, -12.10426];
-        fixedMessage = JSON.stringify(data);
-      }
-    } catch (e) {
-      // Si no es JSON, no modificar
-    }
-    // Reenviar a todos los clientes (excepto el que envió)
-    for (let client of clients) {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(fixedMessage);
-      }
-    }
-  });
-  ws.on('close', () => clients.delete(ws));
+const wss = new WebSocket.Server({ 
+  server, 
+  path: '/ws',
+  clientTracking: true,
+  perMessageDeflate: false
 });
 
-const PORT = process.env.PORT || 3000;
+// Set para mantener conexiones activas
+let connectedClients = new Set();
+
+// Configuración de middleware
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    connectedClients: connectedClients.size,
+    uptime: process.uptime()
+  });
+});
+
+// WebSocket connection handling
+wss.on('connection', (ws, req) => {
+  const clientId = req.socket.remoteAddress + ':' + req.socket.remotePort;
+  connectedClients.add(ws);
+  
+  console.log(`🟢 Cliente WebSocket conectado desde ${clientId}. Total: ${connectedClients.size}`);
+
+  // Heartbeat para mantener conexión activa
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      
+      // Validar datos recibidos
+      if (!validatePetData(data)) {
+        console.warn('⚠️ Datos inválidos recibidos:', data);
+        return;
+      }
+
+      // Procesar datos del ESP32
+      let processedData = { ...data };
+
+      // Análisis IMU si están disponibles los datos
+      if (data.accelerometer && data.gyroscope) {
+        const imuAnalysis = analyzeIMUData(data);
+        processedData.activity = imuAnalysis.state;
+        processedData.activityConfidence = imuAnalysis.confidence;
+        processedData.imuMagnitudes = imuAnalysis.magnitudes;
+      }
+
+      // Manejar coordenadas GPS para Max (petId: 1)
+      if (data.petId === 1) {
+        if (data.gps_valid && data.latitude && data.longitude) {
+          // Usar coordenadas GPS reales del ESP32 cuando estén disponibles
+          processedData.latitude = data.latitude;
+          processedData.longitude = data.longitude;
+          processedData.coordinates = [data.longitude, data.latitude];
+          console.log(`📍 GPS válido para Max: ${data.latitude}, ${data.longitude}`);
+        } else {
+          // Usar coordenadas fijas de UPC Monterrico cuando no hay GPS válido
+          processedData.latitude = -12.10426;
+          processedData.longitude = -76.96358;
+          processedData.coordinates = [-76.96358, -12.10426];
+          console.log(`📍 Usando coordenadas fijas para Max (sin GPS válido)`);
+        }
+      } else if (data.latitude !== undefined && data.longitude !== undefined) {
+        // Para otras mascotas, normalizar coordinates
+        processedData.coordinates = [data.longitude, data.latitude];
+      }
+
+      // Agregar timestamp del servidor si no existe
+      if (!processedData.timestamp) {
+        processedData.timestamp = Date.now();
+      }
+
+      const messageToSend = JSON.stringify(processedData);
+
+      // Reenviar a todos los clientes conectados (excepto el que envió)
+      let clientsSent = 0;
+      connectedClients.forEach(client => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(messageToSend);
+            clientsSent++;
+          } catch (error) {
+            console.error('❌ Error enviando mensaje a cliente:', error);
+            connectedClients.delete(client);
+          }
+        }
+      });
+
+      console.log(`📤 Datos de ${data.deviceId} enviados a ${clientsSent} clientes`);
+
+    } catch (error) {
+      console.error('❌ Error procesando mensaje WebSocket:', error);
+    }
+  });
+
+  ws.on('close', (code, reason) => {
+    connectedClients.delete(ws);
+    console.log(`🔴 Cliente WebSocket desconectado (${code}: ${reason}). Total: ${connectedClients.size}`);
+  });
+
+  ws.on('error', (error) => {
+    console.error('❌ Error en WebSocket:', error);
+    connectedClients.delete(ws);
+  });
+});
+
+// Heartbeat para detectar conexiones muertas
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (!ws.isAlive) {
+      console.log('💔 Terminando conexión inactiva');
+      connectedClients.delete(ws);
+      return ws.terminate();
+    }
+    
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000); // Cada 30 segundos
+
+// Limpiar interval al cerrar servidor
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
 
 // Servir frontend en producción
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'public')));
-  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
 }
 
+const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Backend WebSocket puro en Railway puerto ${PORT}`);
+  console.log(`🚀 Pet Tracker Backend WebSocket Server`);
+  console.log(`📡 Puerto: ${PORT}`);
+  console.log(`🌐 WebSocket endpoint: /ws`);
+  console.log(`💚 Health check: /health`);
+  console.log(`📊 Modo: ${process.env.NODE_ENV || 'development'}`);
 });

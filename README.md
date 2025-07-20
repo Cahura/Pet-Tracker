@@ -1,7 +1,11 @@
 # Pet Tracker – Sistema de Seguimiento GPS + IMU en Tiempo Real
 
 <div align="center">
-  <img src="https://img.icons8.com/fluency/120/paw.png" alt="Pet Tracker - Paw Icon" width="120" height="120">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" alt="Pet Tracker" width="120" height="120" style="filter: hue-rotate(260deg) saturate(1.5) brightness(1.2);">
+  
+  <div style="margin: 20px 0;">
+    <span style="font-size: 120px; color: #4A90E2;">🐾</span>
+  </div>
   
   ![Angular](https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white)
   ![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socketdotio&logoColor=white)

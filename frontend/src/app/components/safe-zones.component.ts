@@ -801,19 +801,20 @@ export interface LocationAlert {
       background: var(--liquid-glass-bg);
       backdrop-filter: blur(30px);
       -webkit-backdrop-filter: blur(30px);
-      border: 1px solid var(--liquid-glass-border);
+      border: none;
       border-radius: 32px;
       width: 95%;
-      max-width: 520px;
-      max-height: 90vh;
+      max-width: 620px;
+      max-height: 85vh;
       overflow: hidden;
       box-shadow: 
-        0 25px 70px rgba(0, 0, 0, 0.6),
-        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        0 32px 80px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
       transform: scale(0.9) translateY(40px);
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
       flex-direction: column;
+      outline: none;
     }
 
     .add-zone-modal.show .add-modal-content {
@@ -924,17 +925,20 @@ export interface LocationAlert {
       background: var(--liquid-glass-bg);
       backdrop-filter: blur(30px);
       -webkit-backdrop-filter: blur(30px);
-      border: 1px solid var(--liquid-glass-border);
+      border: none;
       border-radius: 32px;
       width: 95%;
-      max-width: 600px;
-      max-height: 90vh;
+      max-width: 720px;
+      max-height: 85vh;
       overflow: hidden;
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+      box-shadow: 
+        0 32px 80px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
       transform: scale(0.9) translateY(40px);
       transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       display: flex;
       flex-direction: column;
+      outline: none;
     }
 
     .edit-zone-modal.show .edit-modal-content {
@@ -1050,7 +1054,7 @@ export interface LocationAlert {
         rgba(255, 255, 255, 0.05) 0%,
         rgba(255, 255, 255, 0.02) 100%
       );
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: none;
       border-radius: 24px;
       padding: 28px;
       backdrop-filter: blur(10px);
@@ -1368,7 +1372,7 @@ export interface LocationAlert {
       overflow: hidden;
       margin-bottom: 16px;
       background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: none;
       box-shadow: 
         0 8px 32px rgba(0, 0, 0, 0.3),
         0 0 0 1px rgba(255, 255, 255, 0.05) inset;
@@ -1455,7 +1459,8 @@ export interface LocationAlert {
 
     /* Responsive design */
     @media (max-width: 768px) {
-      .edit-modal-content {
+      .edit-modal-content,
+      .add-modal-content {
         width: 95%;
         max-height: 95vh;
         border-radius: 24px;
@@ -1463,7 +1468,10 @@ export interface LocationAlert {
 
       .edit-modal-header,
       .edit-modal-body,
-      .edit-modal-footer {
+      .edit-modal-footer,
+      .add-modal-header,
+      .add-modal-body,
+      .add-modal-footer {
         padding-left: 20px;
         padding-right: 20px;
       }
@@ -1476,8 +1484,74 @@ export interface LocationAlert {
         grid-column: span 1;
       }
 
-      .edit-modal-footer {
+      .edit-modal-footer,
+      .add-modal-footer {
         flex-direction: column;
+      }
+    }
+
+    /* Estilos para pantallas grandes */
+    @media (min-width: 1200px) {
+      .add-modal-content {
+        max-width: 800px;
+        max-height: 80vh;
+      }
+
+      .edit-modal-content {
+        max-width: 900px;
+        max-height: 80vh;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 24px;
+      }
+
+      .form-group.full-width {
+        grid-column: span 3;
+      }
+
+      .mini-map {
+        height: 300px;
+      }
+
+      .edit-modal-header,
+      .add-modal-header {
+        padding: 40px 40px 0 40px;
+      }
+
+      .edit-modal-body,
+      .add-modal-body {
+        padding: 40px;
+      }
+
+      .edit-modal-footer,
+      .add-modal-footer {
+        padding: 32px 40px 40px 40px;
+      }
+    }
+
+    /* Estilos para pantallas extra grandes */
+    @media (min-width: 1600px) {
+      .add-modal-content {
+        max-width: 1000px;
+      }
+
+      .edit-modal-content {
+        max-width: 1100px;
+      }
+
+      .form-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 32px;
+      }
+
+      .form-group.full-width {
+        grid-column: span 4;
+      }
+
+      .mini-map {
+        height: 350px;
       }
     }
   `],

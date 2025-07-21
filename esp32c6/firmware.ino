@@ -47,11 +47,6 @@ DynamicJsonDocument jsonDoc(1536); // Reducido de 2048 a 1536
 // CONFIGURACIÓN DE TIMING (desde config.h)
 // ============================================================================
 
-// Las constantes ya están definidas en config.h, no las redefinimos aquí
-// const unsigned long SEND_INTERVAL ya definido en config.h
-// const unsigned long GPS_DEBUG_INTERVAL ya definido en config.h  
-// const unsigned long RECONNECT_INTERVAL ya definido en config.h
-
 // Intervalos inteligentes según actividad
 const unsigned long INTERVAL_STATIONARY = 30000;    // 30 segundos si está quieto
 const unsigned long INTERVAL_MOVING = 5000;         // 5 segundos si se mueve

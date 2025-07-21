@@ -41,21 +41,19 @@ const char* PET_NAME = "Max";                       // Nombre de la mascota
 // ============================================================================
 // CONFIGURACIÓN DE TIEMPOS (en milisegundos)
 // ============================================================================
-const unsigned long SEND_INTERVAL = 8000;           // Enviar datos cada 8 segundos (base)
-const unsigned long GPS_DEBUG_INTERVAL = 15000;     // Debug GPS cada 15 segundos
+const unsigned long SEND_INTERVAL = 15000;          // Enviar datos cada 15 segundos (base)
+const unsigned long GPS_DEBUG_INTERVAL = 30000;     // Debug GPS cada 30 segundos
 const unsigned long RECONNECT_INTERVAL = 30000;     // Reconexión cada 30 segundos
 const unsigned long GPS_TIMEOUT = 15000;            // Timeout para GPS válido
 
 // ============================================================================
 // CONFIGURACIÓN DE PINES ESP32C6
 // ============================================================================
-// Nota: Los pines también están definidos en el firmware principal
-// para mayor claridad, pero estas constantes pueden ser usadas
-#define CONFIG_SDA_PIN 6          // Pin SDA para I2C (MPU6050)
-#define CONFIG_SCL_PIN 7          // Pin SCL para I2C (MPU6050)
-#define CONFIG_GPS_RX_PIN 4       // Pin RX para GPS
-#define CONFIG_GPS_TX_PIN 5       // Pin TX para GPS
-#define CONFIG_GPS_BAUDRATE 9600  // Velocidad de comunicación GPS
+#define SDA_PIN 6          // Pin SDA para I2C (MPU6050)
+#define SCL_PIN 7          // Pin SCL para I2C (MPU6050)
+#define GPS_RX_PIN 4       // Pin RX para GPS
+#define GPS_TX_PIN 5       // Pin TX para GPS
+#define GPS_BAUDRATE 9600  // Velocidad de comunicación GPS
 
 // ============================================================================
 // CONFIGURACIÓN DE DEBUG

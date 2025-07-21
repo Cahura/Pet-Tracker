@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
-import { WebSocketService, PetData } from '../services/websocket.service';
+import { WebSocketService, PetData, RoutePoint } from '../services/websocket.service';
 import { PetSelectionService } from '../services/pet-selection.service';
 import { NotificationService } from '../notification/notification';
 
@@ -36,6 +36,21 @@ import { NotificationService } from '../notification/notification';
       </div>
       
       <div *ngIf="error" class="error">Error: {{ error }}</div>
+      
+      <!-- Controles de ruta -->
+      <div class="route-controls" *ngIf="!isLoading">
+        <button class="route-btn" (click)="showRouteHistory()" title="Mostrar historial de rutas">
+          <i class="fas fa-route"></i>
+          <span>Rutas</span>
+        </button>
+        <button class="route-btn" (click)="clearCurrentRoute()" title="Limpiar ruta actual">
+          <i class="fas fa-trash"></i>
+          <span>Limpiar</span>
+        </button>
+        <div class="route-info" *ngIf="routeHistory.length > 0">
+          <span>{{ routeHistory.length }} rutas guardadas</span>
+        </div>
+      </div>
       
       <!-- Popup minimalista para información de la mascota -->
       <div *ngIf="showPetPopup" class="pet-popup" [style.left.px]="popupPosition.x" [style.top.px]="popupPosition.y"
@@ -884,6 +899,85 @@ import { NotificationService } from '../notification/notification';
         transform: scale(1.02);
       }
     }
+
+    /* Controles de ruta */
+    .route-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: var(--liquid-glass-bg);
+      backdrop-filter: blur(var(--liquid-glass-blur));
+      border: 1px solid var(--liquid-glass-border);
+      border-radius: var(--border-radius-lg);
+      padding: 16px;
+      box-shadow: var(--liquid-glass-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 1000;
+      min-width: 120px;
+    }
+
+    .route-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: var(--border-radius-md);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+    }
+
+    .route-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .route-btn:active {
+      transform: translateY(0);
+    }
+
+    .route-btn i {
+      font-size: 16px;
+    }
+
+    .route-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 4px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Responsivo para móviles */
+    @media (max-width: 768px) {
+      .route-controls {
+        top: 10px;
+        right: 10px;
+        padding: 12px;
+        min-width: 100px;
+      }
+
+      .route-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+
+      .route-btn span {
+        display: none;
+      }
+
+      .route-btn i {
+        font-size: 18px;
+      }
+    }
   `],
   standalone: true,
   imports: [CommonModule]
@@ -921,19 +1015,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private petLocation: [number, number] = [-76.9717, -12.0635]; // UPC Sede Monterrico
   private currentPetData: any = null;
 
-  // Manejo de rutas inteligentes
-  private activeRouteLayer: string | null = null;
-  private routeHistory: Array<{
-    id: string,
-    points: Array<{lat: number, lng: number, timestamp: number, speed: number, activity: string}>,
-    startTime: number,
-    endTime: number,
-    totalDistance: number
-  }> = [];
-  private isUserInteractingWithMap = false;
-  private lastUserInteraction = 0;
-  private userInteractionTimeout = 5000; // 5 segundos sin interacción antes de permitir auto-updates
-
   constructor(
     private webSocketService: WebSocketService,
     private cdr: ChangeDetectorRef,
@@ -943,6 +1024,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isProduction = false; // Será reemplazado por environment.production
+    this.loadRouteHistory(); // Cargar historial de rutas
     this.initializeMap();
     this.initializeWebSocketService();
   }
@@ -982,9 +1064,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         this.customizeMapStyle();
         // Don't add default marker - wait for pet data from service
         this.hideLoadingWithAnimation();
-        
-        // Agregar listeners para detectar interacción del usuario
-        this.setupUserInteractionListeners();
       });
 
       // Listener adicional para asegurar que el texto se mejore después de cargar el estilo
@@ -1795,6 +1874,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     // Suscribirse a los datos de la mascota (ESP32C6)
     const dataSub = this.webSocketService.petData$.subscribe((data: PetData | null) => {
       if (data) {
+        // Manejar datos de ruta si están presentes
+        if (data.type === 'route_data' && data.route && data.route.length > 2) {
+          console.log('🛤️ Recibida ruta con', data.route.length, 'puntos');
+          this.addRouteToMap(data.route);
+          this.saveRouteToHistory(data.route);
+          return; // No procesar como datos regulares
+        }
+        
         // Actualizar timestamp de última recepción de datos del ESP32
         this.lastESP32DataTime = Date.now();
         
@@ -1866,15 +1953,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     });
     this.subscriptions.push(dataSub);
 
-    // Suscribirse a los datos de ruta
-    const routeSub = this.webSocketService.routeData$.subscribe((routeData: any) => {
-      if (routeData) {
-        console.log('📍 Datos de ruta recibidos en map component:', routeData);
-        this.handleRouteData(routeData);
-      }
-    });
-    this.subscriptions.push(routeSub);
-
     // Timer para verificar timeout del ESP32C6
     const timeoutCheck = setInterval(() => {
       if (this.isESP32Connected && this.lastESP32DataTime > 0) {
@@ -1940,21 +2018,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Nueva función separada para actualizar posición del marcador sin centrar
   private updatePetMarkerPosition(coordinates: [number, number], shouldCenter: boolean = false): void {
-    // Si el usuario está interactuando con el mapa, NO actualizar nada excepto el marcador
-    if (this.isUserInteractingWithMap && !shouldCenter) {
-      console.log('🚫 Usuario interactuando - solo actualizar marcador, NO mover mapa');
-      
-      // Solo actualizar la posición del marcador, no el mapa
-      if (this.petMarker) {
-        this.petMarker.setLngLat(coordinates);
-      }
-      
-      // Actualizar ubicación almacenada
-      this.petLocation = coordinates;
-      this.petSelectionService.updatePetLocation(1, coordinates);
-      return;
-    }
-    
     // Verificar si la ubicación ha cambiado significativamente para evitar updates innecesarios
     if (this.petLocation) {
       const distance = this.calculateDistance(this.petLocation, coordinates);
@@ -1982,15 +2045,20 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       
       // Solo centrar si se solicita explícitamente (ej: botón "Mi Ubicación")
       if (shouldCenter) {
-        console.log('🎯 Centrando mapa por solicitud explícita');
         this.map.flyTo({
           center: coordinates,
           zoom: Math.max(this.map.getZoom(), 16),
           duration: 1000
         });
-      } else {
-        console.log('✅ Marcador actualizado SIN centrar mapa');
       }
+      
+      // Animación sutil para indicar actualización
+      this.subtleLocationUpdate();
+      this.cdr.detectChanges();
+      
+    } else if (this.map && !this.petMarker) {
+      // Crear marcador si no existe
+      this.updatePetMarker(coordinates);
     }
   }
 
@@ -2648,141 +2716,177 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
-  // MANEJO INTELIGENTE DE INTERACCIÓN DEL USUARIO
+  // MANEJO DE RUTAS Y TRAZADO
   // ============================================================================
 
-  private setupUserInteractionListeners(): void {
-    // Detectar cuando el usuario interactúa con el mapa
-    const userInteractionEvents = ['mousedown', 'touchstart', 'wheel', 'dragstart'];
-    
-    userInteractionEvents.forEach(event => {
-      this.map.on(event, () => {
-        this.isUserInteractingWithMap = true;
-        this.lastUserInteraction = Date.now();
-        console.log('🖱️ Usuario interactuando con el mapa - deshabilitando auto-centrado');
-      });
-    });
+  private routeHistory: RoutePoint[][] = []; // Historial de rutas
+  private currentRouteLayer: any = null; // Layer actual de ruta en el mapa
 
-    // Resetear la interacción después de un tiempo sin actividad
-    setInterval(() => {
-      if (this.isUserInteractingWithMap && 
-          Date.now() - this.lastUserInteraction > this.userInteractionTimeout) {
-        this.isUserInteractingWithMap = false;
-        console.log('⏰ Tiempo de inactividad completado - habilitando auto-updates');
+  private addRouteToMap(routePoints: RoutePoint[]): void {
+    if (!this.map || !routePoints || routePoints.length < 2) return;
+
+    // Convertir puntos de ruta a formato GeoJSON
+    const routeCoordinates = routePoints.map(point => [point.lng, point.lat]);
+
+    const routeGeoJSON = {
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: routeCoordinates
+      },
+      properties: {
+        timestamp: Date.now(),
+        pointCount: routePoints.length,
+        duration: routePoints[routePoints.length - 1].timestamp - routePoints[0].timestamp
       }
-    }, 1000);
-  }
-
-  // ============================================================================
-  // MANEJO DE RUTAS Y TRAYECTORIAS
-  // ============================================================================
-
-  private handleRouteData(routeData: any): void {
-    console.log('📍 Recibiendo datos de ruta:', routeData);
-    
-    if (!routeData.route || !Array.isArray(routeData.route)) {
-      console.log('❌ Datos de ruta inválidos');
-      return;
-    }
-
-    const route = {
-      id: `route_${Date.now()}`,
-      points: routeData.route,
-      startTime: routeData.route[0]?.timestamp || Date.now(),
-      endTime: routeData.route[routeData.route.length - 1]?.timestamp || Date.now(),
-      totalDistance: this.calculateRouteDistance(routeData.route)
     };
 
-    // Agregar a historial
-    this.routeHistory.push(route);
-    console.log(`💾 Ruta guardada en historial: ${route.totalDistance.toFixed(2)}m`);
-
-    // Mostrar ruta en el mapa si no hay interacción del usuario
-    if (!this.isUserInteractingWithMap) {
-      this.displayActiveRoute(route);
-    }
-
-    // Limpiar rutas antiguas (mantener solo las últimas 10)
-    if (this.routeHistory.length > 10) {
-      this.routeHistory = this.routeHistory.slice(-10);
-    }
-  }
-
-  private calculateRouteDistance(points: any[]): number {
-    let totalDistance = 0;
-    
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      
-      const distance = this.calculateDistance([prev.lng, prev.lat], [curr.lng, curr.lat]);
-      totalDistance += distance * 111000; // Convertir a metros
-    }
-    
-    return totalDistance;
-  }
-
-  private displayActiveRoute(route: any): void {
     // Remover ruta anterior si existe
-    if (this.activeRouteLayer && this.map.getLayer(this.activeRouteLayer)) {
-      this.map.removeLayer(this.activeRouteLayer);
-      this.map.removeSource(this.activeRouteLayer);
+    if (this.currentRouteLayer) {
+      this.map.removeLayer('current-route');
+      this.map.removeSource('current-route');
     }
 
-    // Preparar coordenadas para la polilínea
-    const coordinates = route.points.map((point: any) => [point.lng, point.lat]);
-    
-    const routeId = `active-route-${Date.now()}`;
-    this.activeRouteLayer = routeId;
-
-    // Agregar fuente de datos
-    this.map.addSource(routeId, {
+    // Agregar nueva ruta al mapa
+    this.map.addSource('current-route', {
       type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: coordinates
-        }
-      }
+      data: routeGeoJSON
     });
 
-    // Agregar capa de línea
     this.map.addLayer({
-      id: routeId,
+      id: 'current-route',
       type: 'line',
-      source: routeId,
+      source: 'current-route',
       layout: {
         'line-join': 'round',
         'line-cap': 'round'
       },
       paint: {
-        'line-color': '#3887be',
+        'line-color': '#ff6b35', // Color naranja vibrante para la ruta
         'line-width': 4,
         'line-opacity': 0.8
       }
     });
 
-    console.log(`🗺️ Ruta mostrada en el mapa: ${route.points.length} puntos`);
+    // Agregar puntos de inicio y fin
+    this.addRouteMarkers(routePoints);
+
+    console.log('🛤️ Ruta agregada al mapa con', routePoints.length, 'puntos');
+
+    // Ajustar vista para mostrar toda la ruta
+    this.fitMapToRoute(routeCoordinates);
   }
 
-  public getRouteHistory(): any[] {
-    return this.routeHistory;
+  private addRouteMarkers(routePoints: RoutePoint[]): void {
+    if (!this.map || routePoints.length < 2) return;
+
+    const startPoint = routePoints[0];
+    const endPoint = routePoints[routePoints.length - 1];
+
+    // Marcador de inicio (verde)
+    const startMarker = new mapboxgl.Marker({ color: '#22c55e' })
+      .setLngLat([startPoint.lng, startPoint.lat])
+      .setPopup(new mapboxgl.Popup().setHTML(`
+        <div style="text-align: center;">
+          <strong>🟢 Inicio de Ruta</strong><br>
+          <small>${new Date(startPoint.timestamp).toLocaleTimeString()}</small>
+        </div>
+      `))
+      .addTo(this.map);
+
+    // Marcador de fin (rojo)
+    const endMarker = new mapboxgl.Marker({ color: '#ef4444' })
+      .setLngLat([endPoint.lng, endPoint.lat])
+      .setPopup(new mapboxgl.Popup().setHTML(`
+        <div style="text-align: center;">
+          <strong>🔴 Fin de Ruta</strong><br>
+          <small>${new Date(endPoint.timestamp).toLocaleTimeString()}</small>
+        </div>
+      `))
+      .addTo(this.map);
+
+    // Guardar referencias para limpieza posterior
+    this.currentRouteLayer = { startMarker, endMarker };
   }
 
-  public showRouteOnMap(routeId: string): void {
-    const route = this.routeHistory.find(r => r.id === routeId);
-    if (route) {
-      this.displayActiveRoute(route);
-      
-      // Centrar el mapa en la ruta
-      const coordinates = route.points.map((point: any) => [point.lng, point.lat]);
-      if (coordinates.length > 0) {
-        const bounds = new mapboxgl.LngLatBounds();
-        coordinates.forEach(coord => bounds.extend(coord as [number, number]));
-        this.map.fitBounds(bounds, { padding: 20 });
+  private fitMapToRoute(coordinates: number[][]): void {
+    if (!this.map || coordinates.length < 2) return;
+
+    // Crear bounds que incluya todos los puntos de la ruta
+    const bounds = new mapboxgl.LngLatBounds();
+    coordinates.forEach(coord => bounds.extend(coord as any));
+
+    // Ajustar vista con padding
+    this.map.fitBounds(bounds, {
+      padding: 50,
+      duration: 1000
+    });
+  }
+
+  private saveRouteToHistory(routePoints: RoutePoint[]): void {
+    // Agregar la ruta al historial
+    this.routeHistory.push([...routePoints]);
+    
+    // Mantener solo las últimas 10 rutas
+    if (this.routeHistory.length > 10) {
+      this.routeHistory.shift();
+    }
+
+    // Guardar en localStorage para persistencia
+    try {
+      localStorage.setItem('pet-route-history', JSON.stringify(this.routeHistory));
+      console.log('💾 Ruta guardada en historial. Total rutas:', this.routeHistory.length);
+    } catch (error) {
+      console.error('❌ Error guardando ruta en localStorage:', error);
+    }
+  }
+
+  private loadRouteHistory(): void {
+    try {
+      const savedRoutes = localStorage.getItem('pet-route-history');
+      if (savedRoutes) {
+        this.routeHistory = JSON.parse(savedRoutes);
+        console.log('📋 Cargado historial de rutas:', this.routeHistory.length, 'rutas');
       }
+    } catch (error) {
+      console.error('❌ Error cargando historial de rutas:', error);
+      this.routeHistory = [];
+    }
+  }
+
+  public showRouteHistory(): void {
+    if (this.routeHistory.length === 0) {
+      console.log('📋 No hay rutas en el historial');
+      return;
+    }
+
+    console.log('📋 Mostrando historial de', this.routeHistory.length, 'rutas');
+    
+    // Mostrar la ruta más reciente
+    const latestRoute = this.routeHistory[this.routeHistory.length - 1];
+    this.addRouteToMap(latestRoute);
+  }
+
+  public clearCurrentRoute(): void {
+    if (this.currentRouteLayer && this.map) {
+      // Remover layer de ruta
+      if (this.map.getLayer('current-route')) {
+        this.map.removeLayer('current-route');
+      }
+      if (this.map.getSource('current-route')) {
+        this.map.removeSource('current-route');
+      }
+
+      // Remover marcadores
+      if (this.currentRouteLayer.startMarker) {
+        this.currentRouteLayer.startMarker.remove();
+      }
+      if (this.currentRouteLayer.endMarker) {
+        this.currentRouteLayer.endMarker.remove();
+      }
+
+      this.currentRouteLayer = null;
+      console.log('🗑️ Ruta actual eliminada del mapa');
     }
   }
 }

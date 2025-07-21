@@ -349,9 +349,18 @@ void sendOptimizedPetData() {
     
     // Análisis avanzado de actividad combinando IMU y GPS
     activity = analyzeAdvancedActivity(averageAccelMagnitude, currentSpeed, gyroX, gyroY, gyroZ, gpsValid);
+    
+    // Debug logging para verificar que la actividad se está calculando
+    Serial.printf("🎯 Actividad calculada: %s (IMU=%.2f, Speed=%.2f)\n", activity.c_str(), imuMagnitude, currentSpeed);
   } else {
     // Sin IMU, usar solo GPS para determinar actividad básica
     activity = analyzeGPSOnlyActivity(currentSpeed, gpsValid);
+    
+    // Si tampoco hay GPS válido, usar actividad por defecto
+    if (activity == "unknown") {
+      activity = "resting"; // Por defecto descansando
+      Serial.println("⚠️ Sin IMU ni GPS válido, usando actividad por defecto: resting");
+    }
   }
 
   // Agregar datos IMU al JSON
@@ -433,7 +442,8 @@ String analyzeAdvancedActivity(float accelMagnitude, float speed, float gyroX, f
 // Función para análisis basado solo en GPS (cuando IMU no está disponible)
 String analyzeGPSOnlyActivity(float speed, bool gpsValid) {
   if (!gpsValid) {
-    return "unknown";
+    // Sin GPS válido, retornar actividad por defecto
+    return "resting"; // Cambiar de "unknown" a "resting"
   }
   
   float speedKmh = speed * 3.6;

@@ -37,9 +37,9 @@ export class NotificationService {
   }
 
   public showNotification(notification: Omit<NotificationData, 'id' | 'timestamp'>): void {
-    // En producción, solo mostrar alertas importantes (pet-alert, error, warning)
-    const allowedTypes = ['pet-alert', 'error', 'warning'];
-    if (!allowedTypes.includes(notification.type)) {
+    // En producción, solo suprimir notificaciones de info básicas, permitir success para conexiones
+    const suppressedTypes = ['info'];
+    if (suppressedTypes.includes(notification.type) && !notification.title.includes('Conectado') && !notification.title.includes('Activo')) {
       console.log('Notification suppressed for production:', notification.title);
       return;
     }

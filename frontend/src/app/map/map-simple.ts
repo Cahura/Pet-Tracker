@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { mapboxgl, initializeMapbox } from '../utils/mapbox-config';
 import { WebSocketService, PetData } from '../services/websocket.service';
 import { PetSelectionService } from '../services/pet-selection.service';
+import { NotificationService } from '../notification/notification';
 
 @Component({
   selector: 'app-map-simple',
@@ -918,7 +919,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   constructor(
     private webSocketService: WebSocketService,
     private cdr: ChangeDetectorRef,
-    private petSelectionService: PetSelectionService
+    private petSelectionService: PetSelectionService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit() {
@@ -1762,6 +1764,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           this.isESP32Connected = true;
           console.log('🟢 ESP32C6 started sending data - marking as connected');
           
+          // Mostrar notificación de conexión
+          this.notificationService.showConnectionActive('Max');
+          
           // Actualizar estado de la mascota Max
           if (this.selectedPet && this.selectedPet.name === 'Max') {
             console.log('📡 Updating Max pet status to online and activity to resting');
@@ -1811,6 +1816,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         if (timeSinceLastData > this.esp32TimeoutMs) {
           console.log('🔴 ESP32C6 data timeout - marking as disconnected');
           this.isESP32Connected = false;
+          
+          // Mostrar notificación de desconexión
+          this.notificationService.showConnectionInactive('Max');
           
           // Actualizar estado de la mascota Max
           if (this.selectedPet && this.selectedPet.name === 'Max') {
@@ -2204,10 +2212,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         isESP32Connected: this.isESP32Connected,
         lastIMUUpdate: this.lastIMUUpdate,
         activity: this.lastIMUUpdate?.activity,
-        activityType: typeof this.lastIMUUpdate?.activity
+        activityType: typeof this.lastIMUUpdate?.activity,
+        timeSinceLastData: this.lastESP32DataTime ? Date.now() - this.lastESP32DataTime : 'never'
       });
       
-      if (this.isESP32Connected && this.lastIMUUpdate?.activity) {
+      // Verificar si tenemos datos recientes del ESP32C6 (último minuto)
+      const hasRecentData = this.lastESP32DataTime && (Date.now() - this.lastESP32DataTime) < 60000;
+      
+      if (this.isESP32Connected && this.lastIMUUpdate?.activity && hasRecentData) {
         // Usar actividad real del ESP32C6
         const activity = this.lastIMUUpdate.activity.toLowerCase().trim();
         console.log('🎯 Actividad procesada:', activity);

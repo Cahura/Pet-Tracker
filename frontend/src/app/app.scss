@@ -365,7 +365,9 @@ $desktop: 1200px;  // Desktop real
     
     @include mobile {
       top: 100px; // Ajustado para móvil con header isla
-      right: 16px;
+      left: 50%; // Centrar horizontalmente
+      right: auto; // Remover right positioning
+      transform: translateX(-50%); // Centrar perfectamente
       gap: 12px;
     }
     
@@ -1012,7 +1014,9 @@ $desktop: 1200px;  // Desktop real
   
   .map-controls {
     top: 100px; // Ajustado para móvil con header isla
-    right: 16px;
+    left: 50%; // Centrar horizontalmente
+    right: auto; // Remover right positioning
+    transform: translateX(-50%); // Centrar perfectamente
     gap: 12px;
     
     .control-group {

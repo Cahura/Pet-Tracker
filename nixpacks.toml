@@ -1,18 +1,9 @@
-[providers]
-nodejs = {}
+providers = ["nodejs"]
 
 [variables]
 NODE_VERSION = "20.19.0"
 NODE_ENV = "production"
 PORT = "3000"
-
-[build]
-cmds = [
-    "npm run railway:build"
-]
-
-[start]
-cmd = "npm run railway:start"
 
 [phases.build]
 cmds = [
@@ -21,3 +12,6 @@ cmds = [
     "cd frontend && npm run build:prod", 
     "echo 'Build completed successfully!'"
 ]
+
+[start]
+cmd = "npm run railway:start"

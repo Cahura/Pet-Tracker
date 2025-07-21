@@ -123,21 +123,41 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message);
       
+      // Print detallado de datos recibidos
+      console.log('\n📨 ===== DATOS RECIBIDOS DEL ESP32C6 =====');
+      console.log(`🕒 Timestamp: ${new Date().toLocaleTimeString()}`);
+      console.log(`🏷️  Device ID: ${data.deviceId}`);
+      console.log(`🐕 Pet ID: ${data.petId}`);
+      console.log(`🎭 Actividad: ${data.activity || 'NO DEFINIDA'}`);
+      console.log(`📈 Confianza: ${data.activity_confidence ? (data.activity_confidence * 100).toFixed(1) + '%' : 'N/A'}`);
+      console.log(`💪 Intensidad: ${data.movement_intensity !== undefined ? data.movement_intensity + '%' : 'N/A'}`);
+      console.log(`🧍 Postura: ${data.posture || 'N/A'}`);
+      console.log(`📍 GPS válido: ${data.gps_valid ? 'SÍ' : 'NO'}`);
+      if (data.gps_valid && data.latitude && data.longitude) {
+        console.log(`🌍 Coordenadas: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
+        console.log(`🏃 Velocidad: ${data.gps_speed_kmh ? data.gps_speed_kmh.toFixed(1) + ' km/h' : 'N/A'}`);
+      }
+      console.log('==========================================\n');
+      
       // Validar datos recibidos
       if (!validatePetData(data)) {
-        console.warn('⚠️ Datos inválidos recibidos:', data);
+        console.warn('⚠️ VALIDACIÓN FALLIDA - Datos inválidos recibidos:', data);
         return;
       }
 
-      // Procesar datos del ESP32
+      // El ESP32C6 ya procesa toda la actividad - el backend solo retransmite
       let processedData = { ...data };
 
-      // Análisis IMU si están disponibles los datos
-      if (data.accelerometer && data.gyroscope) {
+      // Solo usar análisis del backend si el ESP32C6 no envió actividad procesada
+      if (!data.activity && data.accelerometer && data.gyroscope) {
+        console.log('⚠️ Datos sin actividad procesada - usando análisis de respaldo del backend');
         const imuAnalysis = analyzeIMUData(data);
         processedData.activity = imuAnalysis.state;
         processedData.activityConfidence = imuAnalysis.confidence;
         processedData.imuMagnitudes = imuAnalysis.magnitudes;
+      } else if (data.activity) {
+        // Usar datos ya procesados del ESP32C6
+        console.log(`✅ USANDO ACTIVIDAD DEL ESP32C6: ${data.activity} (confianza: ${data.activity_confidence ? (data.activity_confidence * 100).toFixed(1) + '%' : 'N/A'})`);
       }
 
       // Manejar coordenadas GPS para Max (petId: 1)
@@ -167,6 +187,12 @@ wss.on('connection', (ws, req) => {
 
       const messageToSend = JSON.stringify(processedData);
 
+      // Print antes de enviar a clientes
+      console.log('📤 ===== ENVIANDO A CLIENTES WEB =====');
+      console.log(`🎭 Actividad final: ${processedData.activity}`);
+      console.log(`📈 Confianza: ${processedData.activity_confidence ? (processedData.activity_confidence * 100).toFixed(1) + '%' : 'N/A'}`);
+      console.log(`🌍 Coordenadas: ${processedData.latitude ? processedData.latitude.toFixed(6) : 'N/A'}, ${processedData.longitude ? processedData.longitude.toFixed(6) : 'N/A'}`);
+
       // Reenviar a todos los clientes conectados (excepto el que envió)
       let clientsSent = 0;
       connectedClients.forEach(client => {
@@ -181,7 +207,8 @@ wss.on('connection', (ws, req) => {
         }
       });
 
-      console.log(`📤 Datos de ${data.deviceId} enviados a ${clientsSent} clientes`);
+      console.log(`✅ DATOS ENVIADOS A ${clientsSent} CLIENTE(S) WEB`);
+      console.log('=====================================\n');
 
     } catch (error) {
       console.error('❌ Error procesando mensaje WebSocket:', error);

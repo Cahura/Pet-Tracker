@@ -42,14 +42,36 @@ bool mpuInitialized = false;
 bool gpsInitialized = false; // Nueva variable para estado GPS
 bool gpsReady = false; // GPS ha obtenido su primera ubicación válida
 
-// Variables para análisis de actividad
+// Variables para análisis de actividad optimizado para sensor en la espalda
 float previousLat = 0.0;
 float previousLng = 0.0;
 unsigned long lastGPSTime = 0;
 float currentSpeed = 0.0; // Velocidad en m/s
 float averageAccelMagnitude = 0.0;
+float averageGyroMagnitude = 0.0;
 int activitySamples = 0;
-const int MAX_ACTIVITY_SAMPLES = 5; // Promediar últimas 5 muestras
+const int MAX_ACTIVITY_SAMPLES = 10; // Más muestras para mejor precisión
+
+// Buffers para análisis avanzado de patrones de movimiento
+float accelBuffer[MAX_ACTIVITY_SAMPLES];
+float gyroBuffer[MAX_ACTIVITY_SAMPLES];
+int bufferIndex = 0;
+
+// Umbrales calibrados para sensor en la espalda de mascota
+struct ActivityThresholds {
+  float lying_accel = 9.2;      // Acostado - mínimo movimiento
+  float lying_gyro = 0.5;
+  float sitting_accel = 10.5;   // Sentado - movimiento mínimo
+  float sitting_gyro = 1.2;
+  float standing_accel = 11.8;  // Parado - movimientos leves
+  float standing_gyro = 2.0;
+  float walking_accel = 13.5;   // Caminando - patrón rítmico
+  float walking_gyro = 3.5;
+  float running_accel = 16.0;   // Corriendo - alta actividad
+  float running_gyro = 5.5;
+  float playing_accel = 18.0;   // Jugando - movimientos erráticos
+  float playing_gyro = 7.0;
+} thresholds;
 
 // Buffer para datos JSON
 StaticJsonDocument<512> jsonDoc;
@@ -338,20 +360,46 @@ void sendOptimizedPetData() {
     gyroZ = gyroEvent.gyro.z;
     tempC = tempEvent.temperature;
     
-    // Calcular magnitud total del acelerómetro
+    // Calcular magnitud total del acelerómetro y giroscopio
     imuMagnitude = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
+    float gyroMagnitude = sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ);
     
-    // Actualizar promedio de aceleración para análisis más estable
-    averageAccelMagnitude = ((averageAccelMagnitude * activitySamples) + imuMagnitude) / (activitySamples + 1);
+    // Actualizar buffers circulares para análisis de patrones
+    accelBuffer[bufferIndex] = imuMagnitude;
+    gyroBuffer[bufferIndex] = gyroMagnitude;
+    bufferIndex = (bufferIndex + 1) % MAX_ACTIVITY_SAMPLES;
+    
+    // Actualizar promedios móviles
+    float totalAccel = 0, totalGyro = 0;
+    int validSamples = min(activitySamples + 1, MAX_ACTIVITY_SAMPLES);
+    
+    for (int i = 0; i < validSamples; i++) {
+      totalAccel += accelBuffer[i];
+      totalGyro += gyroBuffer[i];
+    }
+    
+    averageAccelMagnitude = totalAccel / validSamples;
+    averageGyroMagnitude = totalGyro / validSamples;
+    
     if (activitySamples < MAX_ACTIVITY_SAMPLES) {
       activitySamples++;
     }
     
-    // Análisis avanzado de actividad combinando IMU y GPS
-    activity = analyzeAdvancedActivity(averageAccelMagnitude, currentSpeed, gyroX, gyroY, gyroZ, gpsValid);
+    // Análisis avanzado de actividad para sensor en la espalda
+    activity = analyzeBackpackActivity(averageAccelMagnitude, averageGyroMagnitude, currentSpeed, gpsValid, accelX, accelY, accelZ);
     
-    // Debug logging para verificar que la actividad se está calculando
-    Serial.printf("🎯 Actividad calculada: %s (IMU=%.2f, Speed=%.2f)\n", activity.c_str(), imuMagnitude, currentSpeed);
+    // Debug logging detallado con timestamp
+    unsigned long currentTime = millis();
+    Serial.println("==================================================");
+    Serial.printf("🕒 TIMESTAMP: %lu ms (%lu seg)\n", currentTime, currentTime/1000);
+    Serial.printf("🎯 ACTIVIDAD DETECTADA: %s\n", activity.c_str());
+    Serial.printf("📊 MÉTRICAS DETALLADAS:\n");
+    Serial.printf("   - Acelerómetro promedio: %.2f m/s²\n", averageAccelMagnitude);
+    Serial.printf("   - Giroscopio promedio: %.2f rad/s\n", averageGyroMagnitude);
+    Serial.printf("   - Velocidad GPS: %.2f m/s (%.2f km/h)\n", currentSpeed, currentSpeed * 3.6);
+    Serial.printf("   - Componente Z: %.2f m/s²\n", accelZ);
+    Serial.printf("   - GPS válido: %s\n", gpsValid ? "SÍ" : "NO");
+    Serial.println("==================================================");
   } else {
     // Sin IMU, usar solo GPS para determinar actividad básica
     activity = analyzeGPSOnlyActivity(currentSpeed, gpsValid);
@@ -363,9 +411,10 @@ void sendOptimizedPetData() {
     }
   }
 
-  // Agregar datos IMU al JSON
+  // CRÍTICO: Agregar datos IMU al JSON (SIEMPRE, incluso si IMU falla)
+  // El backend REQUIERE estos campos para validación
   JsonObject accel = jsonDoc.createNestedObject("accelerometer");
-  accel["x"] = accelX;
+  accel["x"] = accelX;  // Si IMU falla, estos serán 0.0
   accel["y"] = accelY;
   accel["z"] = accelZ;
 
@@ -374,10 +423,15 @@ void sendOptimizedPetData() {
   gyro["y"] = gyroY;
   gyro["z"] = gyroZ;
 
+  // Agregar datos procesados y optimizados para la web
   jsonDoc["temperature"] = tempC;
   jsonDoc["activity"] = activity;
+  jsonDoc["activity_confidence"] = calculateActivityConfidence(activity, averageAccelMagnitude, averageGyroMagnitude, gpsValid);
+  jsonDoc["movement_intensity"] = calculateMovementIntensity(averageAccelMagnitude, averageGyroMagnitude);
+  jsonDoc["posture"] = analyzePosture(accelX, accelY, accelZ);
   jsonDoc["imu_magnitude"] = imuMagnitude;
   jsonDoc["imu_average"] = averageAccelMagnitude;
+  jsonDoc["gyro_average"] = averageGyroMagnitude;
   
   // Información adicional del estado del dispositivo
   jsonDoc["wifi_rssi"] = WiFi.RSSI();
@@ -392,70 +446,186 @@ void sendOptimizedPetData() {
   String jsonString;
   serializeJson(jsonDoc, jsonString);
   
+  // Print detallado antes de enviar
+  Serial.println("📤 ENVIANDO DATOS AL BACKEND:");
+  Serial.printf("   🏷️  Device ID: %s\n", jsonDoc["deviceId"].as<String>().c_str());
+  Serial.printf("   🎭 Actividad: %s\n", jsonDoc["activity"].as<String>().c_str());
+  Serial.printf("   � Confianza: %.1f%%\n", jsonDoc["activity_confidence"].as<float>() * 100);
+  Serial.printf("   💪 Intensidad: %d%%\n", jsonDoc["movement_intensity"].as<int>());
+  Serial.printf("   🧍 Postura: %s\n", jsonDoc["posture"].as<String>().c_str());
+  Serial.printf("   📍 GPS: %s\n", jsonDoc["gps_valid"].as<bool>() ? "VÁLIDO" : "INVÁLIDO");
+  if (jsonDoc["gps_valid"].as<bool>()) {
+    Serial.printf("   🌍 Coordenadas: %.6f, %.6f\n", 
+                  jsonDoc["latitude"].as<float>(), jsonDoc["longitude"].as<float>());
+  }
+  Serial.printf("   📡 JSON completo: %s\n", jsonString.c_str());
+  Serial.println("==========================================");
+  
   if (ws.sendTXT(jsonString)) {
-    Serial.println("📤 Datos enviados: " + jsonString);
+    Serial.println("✅ DATOS ENVIADOS EXITOSAMENTE AL BACKEND");
   } else {
-    Serial.println("❌ Error enviando datos WebSocket");
+    Serial.println("❌ ERROR ENVIANDO DATOS - WEBSOCKET DESCONECTADO");
     wsConnected = false;
   }
 }
 
-// Función avanzada para análisis de actividad combinando IMU y GPS
-String analyzeAdvancedActivity(float accelMagnitude, float speed, float gyroX, float gyroY, float gyroZ, bool gpsValid) {
-  float gyroMagnitude = sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ);
-  
-  // Convertir velocidad a km/h para análisis
+// Función optimizada para análisis de actividad con sensor en la espalda de la mascota
+String analyzeBackpackActivity(float accelMag, float gyroMag, float speed, bool gpsValid, float accelX, float accelY, float accelZ) {
   float speedKmh = speed * 3.6;
   
-  Serial.printf("🔍 Análisis: Accel=%.2f, Speed=%.2f km/h, Gyro=%.2f\n", accelMagnitude, speedKmh, gyroMagnitude);
+  // Analizar orientación del sensor (importante para sensor en la espalda)
+  float verticalComponent = abs(accelZ); // Componente vertical del acelerómetro
+  float horizontalMag = sqrt(accelX * accelX + accelY * accelY);
   
-  // Prioridad 1: Velocidad muy alta (probable vehículo)
-  if (gpsValid && speedKmh > 15.0) {
-    return "traveling"; // En vehículo/transporte
+  Serial.printf("🔍 Análisis Espalda: Accel=%.2f, Gyro=%.2f, Speed=%.2f km/h, Vertical=%.2f\n", 
+                accelMag, gyroMag, speedKmh, verticalComponent);
+  
+  // Prioridad 1: Velocidad GPS muy alta (en transporte/vehículo)
+  if (gpsValid && speedKmh > 20.0) {
+    return "traveling";
   }
   
-  // Prioridad 2: Actividad alta con velocidad moderada (corriendo)
-  if (accelMagnitude > 15.0 && gyroMagnitude > 2.5 && speedKmh >= 6.0 && speedKmh <= 15.0) {
-    return "running";
+  // Prioridad 2: Análisis combinado de patrones de movimiento
+  
+  // Jugando - Movimientos erráticos e intensos (alta variabilidad)
+  if (accelMag > thresholds.playing_accel && gyroMag > thresholds.playing_gyro) {
+    if (speedKmh >= 3.0 && speedKmh <= 15.0) { // Velocidad moderada con alta actividad
+      return "playing";
+    }
   }
   
-  // Prioridad 3: Actividad moderada con velocidad baja (caminando)
-  if (accelMagnitude > 11.0 && gyroMagnitude > 1.0 && speedKmh >= 1.0 && speedKmh < 6.0) {
-    return "walking";
+  // Corriendo - Alta actividad con patrón rítmico
+  if (accelMag > thresholds.running_accel && gyroMag > thresholds.running_gyro) {
+    if (gpsValid && speedKmh >= 8.0 && speedKmh <= 25.0) {
+      return "running";
+    }
+    // Sin GPS pero con actividad intensa
+    if (!gpsValid && accelMag > 17.0) {
+      return "running";
+    }
   }
   
-  // Prioridad 4: Actividad mínima o sin movimiento GPS (descansando)
-  if (accelMagnitude <= 11.0 || speedKmh < 1.0) {
+  // Caminando - Actividad moderada con movimiento hacia adelante
+  if (accelMag > thresholds.walking_accel && gyroMag > thresholds.walking_gyro) {
+    if (gpsValid && speedKmh >= 1.5 && speedKmh < 8.0) {
+      return "walking";
+    }
+    // Sin GPS pero con patrón de caminata
+    if (!gpsValid && accelMag > 12.0 && accelMag <= 16.0) {
+      return "walking";
+    }
+  }
+  
+  // Parado - Movimientos mínimos pero no completamente quieto
+  if (accelMag > thresholds.standing_accel && accelMag <= thresholds.walking_accel) {
+    if (gyroMag > thresholds.standing_gyro && gyroMag <= thresholds.walking_gyro) {
+      // Verificar si hay pequeños movimientos de cabeza/cuerpo
+      if (verticalComponent > 8.0 && verticalComponent < 12.0) {
+        return "standing";
+      }
+    }
+  }
+  
+  // Sentado - Posición estable con orientación específica
+  if (accelMag > thresholds.sitting_accel && accelMag <= thresholds.standing_accel) {
+    if (gyroMag <= thresholds.sitting_gyro) {
+      // El sensor en la espalda detecta cuando está sentado por la inclinación
+      if (verticalComponent < 8.0 && horizontalMag > 6.0) {
+        return "sitting";
+      }
+    }
+  }
+  
+  // Acostado/Durmiendo - Actividad mínima
+  if (accelMag <= thresholds.lying_accel && gyroMag <= thresholds.lying_gyro) {
+    if (speedKmh < 1.0) {
+      return "lying";
+    }
+  }
+  
+  // Casos por defecto basados en actividad general
+  if (speedKmh < 1.0 && accelMag < 12.0) {
     return "resting";
-  }
-  
-  // Caso por defecto: usar solo IMU si GPS no es confiable
-  if (accelMagnitude > 15.0 && gyroMagnitude > 2.5) {
-    return "running";
-  } else if (accelMagnitude > 11.0 && gyroMagnitude > 1.0) {
-    return "walking";
+  } else if (accelMag > 15.0) {
+    return "active";
   } else {
-    return "resting";
+    return "standing";
   }
 }
 
-// Función para análisis basado solo en GPS (cuando IMU no está disponible)
+// Función para calcular confianza en la actividad detectada
+float calculateActivityConfidence(String activity, float accelMag, float gyroMag, bool gpsValid) {
+  float confidence = 0.5; // Confianza base
+  
+  // Ajustar confianza basada en la calidad de los datos
+  if (gpsValid) {
+    confidence += 0.2; // GPS válido aumenta confianza
+  }
+  
+  // Ajustar según la actividad detectada
+  if (activity == "lying" && accelMag < 10.0 && gyroMag < 1.0) {
+    confidence = 0.95; // Muy seguro cuando está quieto
+  } else if (activity == "running" && accelMag > 16.0 && gyroMag > 5.0) {
+    confidence = 0.90; // Muy seguro cuando corre
+  } else if (activity == "walking" && accelMag > 12.0 && accelMag < 16.0) {
+    confidence = 0.85; // Bastante seguro caminando
+  } else if (activity == "playing" && accelMag > 18.0) {
+    confidence = 0.80; // Seguro jugando con alta actividad
+  }
+  
+  return min(0.99f, max(0.30f, confidence)); // Limitar entre 30% y 99%
+}
+
+// Función para calcular intensidad de movimiento (0-100%)
+int calculateMovementIntensity(float accelMag, float gyroMag) {
+  // Normalizar la intensidad basada en rangos típicos
+  float accelIntensity = min(100.0f, (accelMag - 9.0f) * 5.0f); // 9G base, escalar
+  float gyroIntensity = min(100.0f, gyroMag * 15.0f); // Escalar giroscopio
+  
+  int intensity = (int)((accelIntensity + gyroIntensity) / 2.0f);
+  return max(0, min(100, intensity));
+}
+
+// Función para analizar postura basada en orientación del sensor
+String analyzePosture(float accelX, float accelY, float accelZ) {
+  float totalMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
+  
+  // Normalizar componentes
+  float normX = accelX / totalMag;
+  float normY = accelY / totalMag;
+  float normZ = accelZ / totalMag;
+  
+  // Analizar orientación del sensor en la espalda
+  if (abs(normZ) > 0.8) {
+    return abs(accelZ) > 9.5 ? "upright" : "upside_down";
+  } else if (abs(normY) > 0.6) {
+    return normY > 0 ? "forward_lean" : "backward_lean";
+  } else if (abs(normX) > 0.6) {
+    return normX > 0 ? "right_lean" : "left_lean";
+  } else {
+    return "tilted";
+  }
+}
+
+// Función mejorada para análisis basado solo en GPS (cuando IMU no está disponible)
 String analyzeGPSOnlyActivity(float speed, bool gpsValid) {
   if (!gpsValid) {
-    // Sin GPS válido, retornar actividad por defecto
-    return "resting"; // Cambiar de "unknown" a "resting"
+    return "resting"; // Sin GPS válido, asumir descansando
   }
   
   float speedKmh = speed * 3.6;
   
-  if (speedKmh > 15.0) {
-    return "traveling";
-  } else if (speedKmh >= 6.0) {
-    return "running";
+  // Análisis más detallado basado en velocidad GPS
+  if (speedKmh > 25.0) {
+    return "traveling"; // En vehículo
+  } else if (speedKmh >= 12.0) {
+    return "running"; // Corriendo rápido
+  } else if (speedKmh >= 4.0) {
+    return "walking"; // Caminando o trotando
   } else if (speedKmh >= 1.0) {
-    return "walking";
+    return "standing"; // Movimiento muy lento, probablemente parado con pequeños movimientos
   } else {
-    return "resting";
+    return "resting"; // Sin movimiento significativo
   }
 }
 

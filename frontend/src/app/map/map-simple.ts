@@ -2719,7 +2719,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   // MANEJO DE RUTAS Y TRAZADO
   // ============================================================================
 
-  private routeHistory: RoutePoint[][] = []; // Historial de rutas
+  public routeHistory: RoutePoint[][] = []; // Historial de rutas (público para template)
   private currentRouteLayer: any = null; // Layer actual de ruta en el mapa
 
   private addRouteToMap(routePoints: RoutePoint[]): void {

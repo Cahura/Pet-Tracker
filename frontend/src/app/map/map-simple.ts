@@ -934,7 +934,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private isPopupHovered = false;
   
   // Ubicación actual de la mascota (se actualiza según la mascota seleccionada)
-  private petLocation: [number, number] = [-76.96358, -12.10426]; // Por defecto Max - UPC Monterrico
+  private petLocation: [number, number] = [-77.0428, -12.0464]; // Centro de Lima como default
   private currentPetData: any = null;
 
   constructor(
@@ -1871,14 +1871,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private updatePetLocation(locationData: any): void {
     console.log('🔍 updatePetLocation llamado con:', locationData);
     
-    // Solo actualizar ubicación si es Max (petId: 1)
+    // Solo actualizar ubicación si es Max (petId: 1) y tiene GPS válido
     if (this.currentPetData && this.currentPetData.name === 'Max' && locationData.petId === '1') {
-      let newCoordinates: [number, number];
       
-      // Usar coordenadas del ESP32 (ya procesadas por el backend)
-      if (locationData.longitude && locationData.latitude) {
-        newCoordinates = [locationData.longitude, locationData.latitude];
-        console.log('✅ Actualizando ubicación de Max con GPS del ESP32:', newCoordinates);
+      // Usar coordenadas del ESP32 solo si son GPS válido
+      if (locationData.gps_valid && locationData.longitude && locationData.latitude && 
+          locationData.longitude !== 0 && locationData.latitude !== 0) {
+        const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
+        console.log('✅ Actualizando ubicación de Max con GPS válido del ESP32C6:', newCoordinates);
         
         // Verificar si la ubicación ha cambiado significativamente
         if (this.petLocation) {
@@ -1886,30 +1886,33 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           console.log(`📏 Distancia desde última ubicación: ${(distance * 111000).toFixed(2)} metros`);
         }
         
-      } else {
-        // Fallback a coordenadas fijas si no hay GPS
-        newCoordinates = [-76.96358, -12.10426]; // UPC Monterrico
-        console.log('⚠️ Usando coordenadas fijas para Max (sin GPS):', newCoordinates);
-      }
-      
-      // Actualizar ubicación almacenada
-      this.petLocation = newCoordinates;
-      
-      // Actualizar marcador en el mapa
-      if (this.petMarker && this.map) {
-        console.log('🗺️ Actualizando marcador en el mapa a:', newCoordinates);
-        this.petMarker.setLngLat(newCoordinates);
+        // Actualizar ubicación almacenada
+        this.petLocation = newCoordinates;
         
-        // Agregar animación sutil para indicar actualización
-        this.subtleLocationUpdate();
+        // Actualizar en el servicio de mascotas
+        this.petSelectionService.updatePetLocation(1, newCoordinates);
         
-        // Trigger change detection para asegurar que Angular actualice la vista
-        this.cdr.detectChanges();
+        // Actualizar marcador en el mapa
+        if (this.petMarker && this.map) {
+          console.log('🗺️ Actualizando marcador en el mapa a:', newCoordinates);
+          this.petMarker.setLngLat(newCoordinates);
+          
+          // Agregar animación sutil para indicar actualización
+          this.subtleLocationUpdate();
+          
+          // Trigger change detection para asegurar que Angular actualice la vista
+          this.cdr.detectChanges();
+        } else if (this.map && !this.petMarker) {
+          // Crear marcador si no existe
+          this.updatePetMarker(newCoordinates);
+        }
+        
       } else {
-        console.warn('❌ No se puede actualizar marcador:', { 
-          marker: !!this.petMarker, 
-          map: !!this.map 
-        });
+        console.log('❌ GPS inválido para Max - no se actualiza ubicación en mapa');
+        console.log(`   Coordenadas: lat=${locationData.latitude}, lng=${locationData.longitude}`);
+        
+        // No remover marcador, solo no actualizar posición
+        // El marcador permanece en la última posición GPS válida conocida
       }
     } else {
       console.log('🚫 updatePetLocation ignorado:', {

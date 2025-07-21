@@ -67,8 +67,8 @@ export class PetSelectionService {
       breed: 'Golden Retriever', 
       status: 'offline', 
       battery: 78, 
-      location: 'UPC Monterrico, Lima', 
-      coordinates: [-76.96358, -12.10426], // UPC Monterrico
+      location: 'Esperando GPS del ESP32C6...', 
+      coordinates: [0, 0], // Sin coordenadas por defecto - solo GPS real del ESP32C6
       icon: 'fas fa-dog',
       color: '#FF6B35',
       gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
@@ -178,6 +178,23 @@ export class PetSelectionService {
       pet.activityState = activityState;
       if (pet === this.selectedPetSubject.value) {
         this.selectedPetSubject.next(pet);
+      }
+    }
+  }
+
+  // Método para actualizar coordenadas GPS reales desde ESP32C6
+  updatePetLocation(petId: number, coordinates: [number, number], location?: string) {
+    const pet = this.demoAnimals.find(p => p.id === petId);
+    if (pet) {
+      // Solo actualizar si son coordenadas válidas (no 0,0)
+      if (coordinates[0] !== 0 && coordinates[1] !== 0) {
+        pet.coordinates = coordinates;
+        pet.location = location || `GPS: ${coordinates[1].toFixed(6)}, ${coordinates[0].toFixed(6)}`;
+        console.log(`📍 Ubicación actualizada para ${pet.name}: ${pet.coordinates[1]}, ${pet.coordinates[0]}`);
+        
+        if (pet === this.selectedPetSubject.value) {
+          this.selectedPetSubject.next(pet);
+        }
       }
     }
   }

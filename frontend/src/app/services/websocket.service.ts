@@ -96,10 +96,20 @@ export class WebSocketService {
   private handleMessage(data: string): void {
     try {
       const parsedData = JSON.parse(data);
+      console.log('📨 Datos recibidos del WebSocket:', parsedData);
       
       // Normalizar datos: convertir latitude/longitude a coordinates si es necesario
       if (parsedData.latitude !== undefined && parsedData.longitude !== undefined) {
-        parsedData.coordinates = [parsedData.longitude, parsedData.latitude];
+        // Solo crear coordenadas si son válidas (no null, no 0,0)
+        if (parsedData.latitude !== null && parsedData.longitude !== null && 
+            parsedData.latitude !== 0 && parsedData.longitude !== 0) {
+          parsedData.coordinates = [parsedData.longitude, parsedData.latitude];
+          console.log(`📍 Coordenadas GPS válidas para petId ${parsedData.petId}: [${parsedData.longitude}, ${parsedData.latitude}]`);
+        } else {
+          // Coordenadas inválidas - no actualizar ubicación
+          parsedData.coordinates = null;
+          console.log(`❌ Coordenadas GPS inválidas para petId ${parsedData.petId}: lat=${parsedData.latitude}, lng=${parsedData.longitude}`);
+        }
       }
 
       // Validar que tiene los campos requeridos
@@ -114,13 +124,19 @@ export class WebSocketService {
   }
 
   private isValidPetData(data: any): data is PetData {
-    return data && 
+    // Validación básica sin requerir coordenadas válidas obligatoriamente
+    const isValid = data && 
            typeof data.petId === 'number' &&
            typeof data.deviceId === 'string' &&
-           Array.isArray(data.coordinates) &&
-           data.coordinates.length === 2 &&
            data.accelerometer && 
            data.gyroscope;
+           
+    // Las coordenadas son opcionales - pueden ser null si no hay GPS válido
+    if (isValid) {
+      console.log(`✅ Datos válidos para petId ${data.petId} con GPS: ${data.coordinates ? 'SÍ' : 'NO'}`);
+    }
+    
+    return isValid;
   }
 
   private scheduleReconnect(): void {

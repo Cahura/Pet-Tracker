@@ -1869,31 +1869,55 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   private updatePetLocation(locationData: any): void {
-    // Solo actualizar ubicación si es Max (petId: 1) y tenemos datos GPS válidos
+    console.log('🔍 updatePetLocation llamado con:', locationData);
+    
+    // Solo actualizar ubicación si es Max (petId: 1)
     if (this.currentPetData && this.currentPetData.name === 'Max' && locationData.petId === '1') {
       let newCoordinates: [number, number];
       
       // Usar coordenadas del ESP32 (ya procesadas por el backend)
       if (locationData.longitude && locationData.latitude) {
         newCoordinates = [locationData.longitude, locationData.latitude];
-        console.log('Actualizando ubicación de Max con GPS del ESP32:', newCoordinates);
+        console.log('✅ Actualizando ubicación de Max con GPS del ESP32:', newCoordinates);
+        
+        // Verificar si la ubicación ha cambiado significativamente
+        if (this.petLocation) {
+          const distance = this.calculateDistance(this.petLocation, newCoordinates);
+          console.log(`📏 Distancia desde última ubicación: ${(distance * 111000).toFixed(2)} metros`);
+        }
+        
       } else {
         // Fallback a coordenadas fijas si no hay GPS
         newCoordinates = [-76.96358, -12.10426]; // UPC Monterrico
-        console.log('Usando coordenadas fijas para Max (sin GPS):', newCoordinates);
+        console.log('⚠️ Usando coordenadas fijas para Max (sin GPS):', newCoordinates);
       }
       
+      // Actualizar ubicación almacenada
       this.petLocation = newCoordinates;
       
+      // Actualizar marcador en el mapa
       if (this.petMarker && this.map) {
+        console.log('🗺️ Actualizando marcador en el mapa a:', newCoordinates);
         this.petMarker.setLngLat(newCoordinates);
-        
-        // Removido centrado automático - el usuario debe usar el botón "Centrar en mascota"
-        // Esto evita que el mapa se centre automáticamente cuando se reconecta el ESP32C6
         
         // Agregar animación sutil para indicar actualización
         this.subtleLocationUpdate();
+        
+        // Trigger change detection para asegurar que Angular actualice la vista
+        this.cdr.detectChanges();
+      } else {
+        console.warn('❌ No se puede actualizar marcador:', { 
+          marker: !!this.petMarker, 
+          map: !!this.map 
+        });
       }
+    } else {
+      console.log('🚫 updatePetLocation ignorado:', {
+        currentPet: this.currentPetData?.name,
+        petId: locationData.petId,
+        isMax: this.currentPetData?.name === 'Max',
+        isCorrectId: locationData.petId === '1'
+      });
     }
   }
 

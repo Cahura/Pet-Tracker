@@ -167,13 +167,21 @@ wss.on('connection', (ws, req) => {
           processedData.latitude = data.latitude;
           processedData.longitude = data.longitude;
           processedData.coordinates = [data.longitude, data.latitude];
-          console.log(`📍 GPS válido para Max: ${data.latitude}, ${data.longitude}`);
+          console.log(`📍 GPS VÁLIDO para Max: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
+          console.log(`📊 Calidad GPS: satélites=${data.gps_satellites || 'N/A'}, hdop=${data.gps_hdop || 'N/A'}`);
+          
+          // Agregar información adicional de GPS
+          if (data.gps_satellites) processedData.gps_satellites = data.gps_satellites;
+          if (data.gps_hdop) processedData.gps_hdop = data.gps_hdop;
+          if (data.gps_speed_kmh) processedData.gps_speed_kmh = data.gps_speed_kmh;
+          
         } else {
           // Usar coordenadas fijas de UPC Monterrico cuando no hay GPS válido
           processedData.latitude = -12.10426;
           processedData.longitude = -76.96358;
           processedData.coordinates = [-76.96358, -12.10426];
-          console.log(`📍 Usando coordenadas fijas para Max (sin GPS válido)`);
+          console.log(`📍 Usando coordenadas FIJAS para Max (GPS no válido)`);
+          console.log(`   Razón: gps_valid=${data.gps_valid}, lat=${data.latitude}, lng=${data.longitude}`);
         }
       } else if (data.latitude !== undefined && data.longitude !== undefined) {
         // Para otras mascotas, normalizar coordinates

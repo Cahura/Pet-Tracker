@@ -6,589 +6,383 @@
 #include <Adafruit_Sensor.h>
 #include <TinyGPSPlus.h>
 
-// Configuración de pines I2C para ESP32C6 (corregidos)
+// ============================================================================
+// CONFIGURACIÓN DE HARDWARE
+// ============================================================================
+
+// Pines I2C para ESP32C6
 #define SDA_PIN 6
 #define SCL_PIN 7
 
-// GPS usará UART1 con pines por defecto del ESP32C6
+// GPS UART pines (ESP32C6)
+#define GPS_RX_PIN 4
+#define GPS_TX_PIN 5
+#define GPS_BAUDRATE 9600
 
-// Configuración WiFi (OBLIGATORIO CAMBIAR POR TUS CREDENCIALES)
+// ============================================================================
+// CONFIGURACIÓN DE RED
+// ============================================================================
+
+// WiFi (CAMBIAR POR TUS CREDENCIALES)
 const char* ssid = "TU_WIFI_SSID";           
-const char* password = "TU_WIFI_PASSWORD";    
+const char* password = "TU_WIFI_PASSWORD";
 
-// Configuración WebSocket optimizada para Railway
+// WebSocket para Railway
 const char* ws_host = "pet-tracker-production.up.railway.app";
 const int ws_port = 443;
 const char* ws_path = "/ws";
 
-// Objetos globales
+// ============================================================================
+// OBJETOS GLOBALES
+// ============================================================================
+
 WebSocketsClient ws;
 Adafruit_MPU6050 mpu;
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(1);
+DynamicJsonDocument jsonDoc(1536); // Reducido de 2048 a 1536
 
-// Variables de timing optimizadas
+// ============================================================================
+// CONFIGURACIÓN DE TIMING
+// ============================================================================
+
+const unsigned long SEND_INTERVAL = 8000;        // Enviar datos cada 8s
+const unsigned long GPS_DEBUG_INTERVAL = 15000;  // Debug GPS cada 15s
+const unsigned long RECONNECT_INTERVAL = 30000;  // Reconexión cada 30s
+
 unsigned long lastSend = 0;
-const unsigned long SEND_INTERVAL = 8000; // Enviar cada 8 segundos para conservar batería
-unsigned long lastGPSUpdate = 0;
-const unsigned long GPS_UPDATE_INTERVAL = 10000; // Actualizar GPS cada 10 segundos
+unsigned long lastGPSDebug = 0;
 unsigned long lastReconnect = 0;
-const unsigned long RECONNECT_INTERVAL = 30000; // Reintentar conexión cada 30 segundos
 
-// Estados de conexión
+// ============================================================================
+// ESTADOS DEL SISTEMA
+// ============================================================================
+
 bool wifiConnected = false;
 bool wsConnected = false;
 bool mpuInitialized = false;
-bool gpsInitialized = false; // Nueva variable para estado GPS
-bool gpsReady = false; // GPS ha obtenido su primera ubicación válida
+bool gpsInitialized = false;
+bool gpsReady = false;
 
-// Variables para análisis de actividad optimizado para sensor en la espalda
+// ============================================================================
+// ANÁLISIS DE ACTIVIDAD
+// ============================================================================
+
+// Variables de posición GPS
 float previousLat = 0.0;
 float previousLng = 0.0;
 unsigned long lastGPSTime = 0;
-float currentSpeed = 0.0; // Velocidad en m/s
-float averageAccelMagnitude = 0.0;
-float averageGyroMagnitude = 0.0;
-int activitySamples = 0;
-const int MAX_ACTIVITY_SAMPLES = 10; // Más muestras para mejor precisión
+float currentSpeed = 0.0;
 
-// Buffers para análisis avanzado de patrones de movimiento
-float accelBuffer[MAX_ACTIVITY_SAMPLES];
-float gyroBuffer[MAX_ACTIVITY_SAMPLES];
+// Variables IMU
+const int MAX_SAMPLES = 8; // Reducido de 10 a 8
+float accelBuffer[MAX_SAMPLES];
+float gyroBuffer[MAX_SAMPLES];
 int bufferIndex = 0;
+int sampleCount = 0;
+float avgAccelMag = 0.0;
+float avgGyroMag = 0.0;
 
-// Umbrales calibrados para sensor en la espalda de mascota
-struct ActivityThresholds {
-  float lying_accel = 9.2;      // Acostado - mínimo movimiento
-  float lying_gyro = 0.5;
-  float sitting_accel = 10.5;   // Sentado - movimiento mínimo
-  float sitting_gyro = 1.2;
-  float standing_accel = 11.8;  // Parado - movimientos leves
-  float standing_gyro = 2.0;
-  float walking_accel = 13.5;   // Caminando - patrón rítmico
-  float walking_gyro = 3.5;
-  float running_accel = 16.0;   // Corriendo - alta actividad
-  float running_gyro = 5.5;
-  float playing_accel = 18.0;   // Jugando - movimientos erráticos
-  float playing_gyro = 7.0;
+// Umbrales optimizados para pet tracker
+struct {
+  float lying_accel = 9.2, lying_gyro = 0.5;
+  float sitting_accel = 10.5, sitting_gyro = 1.2;
+  float standing_accel = 11.8, standing_gyro = 2.0;
+  float walking_accel = 13.5, walking_gyro = 3.5;
+  float running_accel = 16.0, running_gyro = 5.5;
+  float playing_accel = 18.0, playing_gyro = 7.0;
 } thresholds;
 
-// Buffer para datos JSON
-StaticJsonDocument<512> jsonDoc;
-
-// Función optimizada para manejar eventos WebSocket
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-  switch(type) {
-    case WStype_DISCONNECTED:
-      Serial.println("❌ WebSocket desconectado!");
-      wsConnected = false;
-      break;
-      
-    case WStype_CONNECTED:
-      Serial.printf("✅ WebSocket conectado a: %s\n", payload);
-      wsConnected = true;
-      // Enviar mensaje de identificación
-      ws.sendTXT("{\"type\":\"device_connect\",\"deviceId\":\"ESP32C6_MAX\"}");
-      break;
-      
-    case WStype_TEXT:
-      Serial.printf("📨 Mensaje recibido: %s\n", payload);
-      break;
-      
-    case WStype_ERROR:
-      Serial.printf("❌ Error WebSocket: %s\n", payload);
-      wsConnected = false;
-      break;
-      
-    case WStype_FRAGMENT_TEXT_START:
-    case WStype_FRAGMENT_BIN_START:
-    case WStype_FRAGMENT:
-    case WStype_FRAGMENT_FIN:
-      Serial.println("📦 Fragmento WebSocket recibido");
-      break;
-      
-    case WStype_PING:
-      Serial.println("🏓 Ping WebSocket");
-      break;
-      
-    case WStype_PONG:
-      Serial.println("🏓 Pong WebSocket");
-      break;
-      
-    default:
-      Serial.printf("🔍 Evento WebSocket desconocido: %d\n", type);
-      break;
-  }
-}
+// ============================================================================
+// FUNCIONES PRINCIPALES
+// ============================================================================
 
 void setup() {
   Serial.begin(115200);
-  delay(2000); // Delay mayor para estabilización
+  delay(1000);
   
-  Serial.println();
-  Serial.println("=== INICIANDO ESP32C6 PET TRACKER OPTIMIZADO ===");
-  Serial.flush(); // Asegurar que se imprima
-
-  // Inicializar I2C para MPU6050 primero
-  Serial.print("Inicializando I2C (SDA=6, SCL=7)... ");
-  Serial.flush();
-  Wire.begin(SDA_PIN, SCL_PIN);
-  delay(100);
-  Serial.println("OK");
-
-  // Inicializar MPU6050 con manejo de errores ANTES del GPS
-  Serial.print("Inicializando MPU6050... ");
-  Serial.flush();
-  if (mpu.begin()) {
-    // Configuración optimizada del sensor
-    mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
-    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-    Serial.println("OK");
-    mpuInitialized = true;
-  } else {
-    Serial.println("❌ FALLÓ (continuará sin IMU)");
-    mpuInitialized = false;
-  }
-
-  // Inicializar GPS UART de forma simple
-  Serial.print("Inicializando GPS UART... ");
-  Serial.flush();
+  Serial.println("\n=== ESP32C6 PET TRACKER v2.0 ===");
   
-  // Inicialización GPS ultra-simple
-  SerialGPS.begin(9600, SERIAL_8N1, -1, -1, false, 20000UL); // Usar pines por defecto
-  delay(100); // Delay mínimo
+  // Inicialización en orden de prioridad
+  initializeI2C();
+  initializeMPU6050();
+  initializeGPS();
+  initializeWiFi();
+  initializeWebSocket();
   
-  Serial.println("OK (GPS en segundo plano)");
-  gpsInitialized = true; // Asumir que está disponible
-
-  // Conectar a WiFi con timeout y mejor manejo
-  Serial.print("Conectando a WiFi");
-  Serial.flush();
-  WiFi.begin(ssid, password);
-  
-  int wifiAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 30) { // Más intentos
-    delay(500);
-    Serial.print(".");
-    wifiAttempts++;
-    
-    // Watchdog reset prevention
-    if (wifiAttempts % 10 == 0) {
-      Serial.flush();
-      yield(); // Ceder control para evitar watchdog
-    }
-  }
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println();
-    Serial.println("✅ WiFi conectado!");
-    Serial.printf("📍 IP: %s\n", WiFi.localIP().toString().c_str());
-    Serial.flush();
-    wifiConnected = true;
-  } else {
-    Serial.println();
-    Serial.println("❌ Error conectando WiFi - continuará sin conexión");
-    Serial.flush();
-    wifiConnected = false;
-  }
-
-  // Configurar WebSocket solo si WiFi está conectado
-  if (wifiConnected) {
-    Serial.print("Configurando WebSocket SSL... ");
-    Serial.flush();
-    
-    // Configuración específica para Railway
-    ws.beginSSL(ws_host, ws_port, ws_path);
-    ws.onEvent(webSocketEvent);
-    ws.setReconnectInterval(5000);
-    ws.enableHeartbeat(15000, 3000, 2); // Heartbeat cada 15s
-    
-    // Headers adicionales para Railway
-    ws.setExtraHeaders("Origin: https://pet-tracker-production.up.railway.app");
-    
-    Serial.println("OK");
-    
-    // Intentar conexión inmediata
-    Serial.print("Conectando WebSocket... ");
-    Serial.flush();
-    
-    unsigned long wsStart = millis();
-    while (!wsConnected && (millis() - wsStart < 10000)) { // 10 segundos máximo
-      ws.loop();
-      delay(100);
-    }
-    
-    if (wsConnected) {
-      Serial.println("✅ WebSocket conectado!");
-    } else {
-      Serial.println("⚠️ WebSocket no conectó (continuará intentando)");
-    }
-  }
-  
-  Serial.println("=== SISTEMA INICIADO ===");
-  Serial.println("📊 Estado inicial:");
-  Serial.printf("   WiFi: %s\n", wifiConnected ? "✅ Conectado" : "❌ Desconectado");
-  Serial.printf("   IMU:  %s\n", mpuInitialized ? "✅ Funcionando" : "❌ Error");
-  Serial.printf("   GPS:  %s\n", gpsInitialized ? (gpsReady ? "✅ Listo" : "🔍 Buscando señal...") : "❌ Deshabilitado");
-  Serial.flush();
+  Serial.println("=== SISTEMA LISTO ===");
+  printSystemStatus();
 }
 
 void loop() {
-  // Mantener conexión WebSocket activa
+  // Mantener conexiones activas
   if (wifiConnected) {
     ws.loop();
   }
   
-  // Procesar datos GPS con manejo de errores
-  try {
-    while (SerialGPS.available() > 0) {
-      char c = SerialGPS.read();
-      if (gps.encode(c)) {
-        // GPS ha recibido una nueva sentencia completa válida
-        if (gps.location.isUpdated()) {
-          Serial.printf("📍 GPS actualizado: %.6f, %.6f\n", 
-                       gps.location.lat(), gps.location.lng());
-        }
-      }
-    }
-  } catch (...) {
-    // Ignorar errores de GPS para evitar colgado
-    Serial.println("⚠️ Error leyendo GPS - continuando...");
+  // Procesar datos GPS
+  processGPSData();
+  
+  // Enviar datos si es momento o si hay nueva ubicación GPS
+  bool forceGPSUpdate = false;
+  if (gps.location.isUpdated() && gps.location.isValid()) {
+    forceGPSUpdate = true;
+    Serial.println("🚀 FORZANDO ENVÍO - Nueva ubicación GPS detectada");
   }
-
-  // Verificar si es momento de enviar datos
-  unsigned long now = millis();
-  if (now - lastSend >= SEND_INTERVAL) {
+  
+  if (millis() - lastSend >= SEND_INTERVAL || forceGPSUpdate) {
     if (wifiConnected && wsConnected) {
-      sendOptimizedPetData();
-      lastSend = now;
+      sendPetData();
+      lastSend = millis();
     } else {
-      // Intentar reconectar si es necesario
       attemptReconnection();
     }
   }
   
-  // Pequeño delay para evitar saturar el CPU
-  delay(10);
+  // Debug GPS periódico
+  if (millis() - lastGPSDebug >= GPS_DEBUG_INTERVAL) {
+    debugGPSStatus();
+    lastGPSDebug = millis();
+  }
+  
+  delay(10); // Pequeño delay para eficiencia
 }
 
-void sendOptimizedPetData() {
-  // Limpiar documento JSON
-  jsonDoc.clear();
-  
-  // Datos básicos del dispositivo
-  jsonDoc["petId"] = 1;
-  jsonDoc["deviceId"] = "ESP32C6_MAX";
-  jsonDoc["timestamp"] = millis();
-  jsonDoc["battery"] = calculateBatteryLevel();
-  
-  // Campo de estado de conexión - indica que el ESP32C6 está activo
-  jsonDoc["connectionStatus"] = "connected";
-  jsonDoc["deviceActive"] = true;
+// ============================================================================
+// INICIALIZACIÓN DEL HARDWARE
+// ============================================================================
 
-  // Obtener y analizar datos GPS
-  bool gpsValid = false;
-  float currentLat = 0.0, currentLng = 0.0;
+void initializeI2C() {
+  Serial.print("Inicializando I2C... ");
+  Wire.begin(SDA_PIN, SCL_PIN);
+  delay(100);
+  Serial.println("✅ OK");
+}
+
+void initializeMPU6050() {
+  Serial.print("Inicializando MPU6050... ");
   
-  if (gps.location.isValid() && gps.location.age() < 5000) { // GPS válido si es reciente (5 seg)
-    currentLat = gps.location.lat();
-    currentLng = gps.location.lng();
+  if (mpu.begin()) {
+    mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpuInitialized = true;
+    Serial.println("✅ OK");
+  } else {
+    mpuInitialized = false;
+    Serial.println("❌ Error (continuará sin IMU)");
+  }
+}
+
+void initializeGPS() {
+  Serial.print("Inicializando GPS... ");
+  
+  SerialGPS.begin(GPS_BAUDRATE, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  delay(500);
+  gpsInitialized = true;
+  
+  Serial.println("✅ OK");
+  
+  // Test rápido de comunicación GPS
+  testGPSCommunication();
+}
+
+void initializeWiFi() {
+  Serial.print("Conectando WiFi");
+  WiFi.begin(ssid, password);
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    wifiConnected = true;
+    Serial.println("\n✅ WiFi conectado!");
+    Serial.printf("📍 IP: %s\n", WiFi.localIP().toString().c_str());
+  } else {
+    wifiConnected = false;
+    Serial.println("\n❌ WiFi falló");
+  }
+}
+
+void initializeWebSocket() {
+  if (!wifiConnected) return;
+  
+  Serial.print("Configurando WebSocket... ");
+  
+  ws.beginSSL(ws_host, ws_port, ws_path);
+  ws.onEvent(webSocketEvent);
+  ws.setReconnectInterval(5000);
+  ws.enableHeartbeat(15000, 3000, 2);
+  ws.setExtraHeaders("Origin: https://pet-tracker-production.up.railway.app");
+  
+  Serial.println("✅ OK");
+  
+  // Intentar conexión inicial
+  unsigned long start = millis();
+  while (!wsConnected && (millis() - start < 10000)) {
+    ws.loop();
+    delay(100);
+  }
+  
+  if (wsConnected) {
+    Serial.println("✅ WebSocket conectado!");
+  } else {
+    Serial.println("⚠️ WebSocket pendiente...");
+  }
+}
+
+// ============================================================================
+// PROCESAMIENTO DE DATOS GPS
+// ============================================================================
+
+void processGPSData() {
+  static int charsProcessed = 0;
+  static int validSentences = 0;
+  
+  while (SerialGPS.available()) {
+    char c = SerialGPS.read();
+    charsProcessed++;
     
-    // Marcar GPS como listo si es la primera vez que obtenemos una ubicación válida
-    if (!gpsReady) {
-      gpsReady = true;
-      Serial.println("🛰️ GPS LISTO: Señal adquirida!");
-    }
-    
-    jsonDoc["latitude"] = currentLat;
-    jsonDoc["longitude"] = currentLng;
-    jsonDoc["gps_valid"] = true;
-    jsonDoc["gps_satellites"] = gps.satellites.value();
-    jsonDoc["gps_hdop"] = gps.hdop.hdop();
-    
-    // Calcular velocidad basada en GPS
-    if (previousLat != 0.0 && previousLng != 0.0 && lastGPSTime > 0) {
-      float distance = calculateDistance(previousLat, previousLng, currentLat, currentLng);
-      float timeElapsed = (millis() - lastGPSTime) / 1000.0; // en segundos
+    if (gps.encode(c)) {
+      validSentences++;
       
-      if (timeElapsed > 0) {
-        currentSpeed = distance / timeElapsed; // m/s
-        jsonDoc["gps_speed"] = currentSpeed;
-        jsonDoc["gps_speed_kmh"] = currentSpeed * 3.6; // km/h
+      if (gps.location.isUpdated()) {
+        if (!gpsReady) {
+          gpsReady = true;
+          Serial.printf("🛰️ GPS LISTO: %.6f, %.6f\n", 
+                       gps.location.lat(), gps.location.lng());
+        }
+        
+        // Log cada actualización de ubicación para debugging
+        Serial.printf("📍 NUEVA UBICACIÓN: %.6f, %.6f (sats: %d, hdop: %.2f)\n", 
+                     gps.location.lat(), gps.location.lng(), 
+                     gps.satellites.value(), gps.hdop.hdop());
+        
+        // Forzar envío inmediato de nueva ubicación si está conectado
+        if (wifiConnected && wsConnected) {
+          Serial.println("🚀 Enviando nueva ubicación inmediatamente...");
+          sendPetData();
+          lastSend = millis(); // Actualizar timestamp para evitar envío doble
+        }
+      }
+      
+      // Log cuando recibimos otras sentencias GPS
+      if (gps.satellites.isUpdated()) {
+        Serial.printf("🛰️ Satélites actualizados: %d\n", gps.satellites.value());
       }
     }
-    
-    // Actualizar posición anterior
-    previousLat = currentLat;
-    previousLng = currentLng;
-    lastGPSTime = millis();
-    gpsValid = true;
-  } else {
-    // GPS no válido - mostrar estado de búsqueda solo si está inicializado
-    if (gpsInitialized) {
-      static unsigned long lastSearchMessage = 0;
-      if (millis() - lastSearchMessage > 10000) { // Cada 10 segundos
-        Serial.printf("🔍 GPS: Buscando señal... (sats: %d)\n", gps.satellites.value());
-        lastSearchMessage = millis();
-      }
-    }
-    
-    jsonDoc["latitude"] = nullptr;
-    jsonDoc["longitude"] = nullptr;
-    jsonDoc["gps_valid"] = false;
-    jsonDoc["gps_speed"] = 0.0;
-    currentSpeed = 0.0;
-  }
-
-  // Obtener datos IMU si está disponible
-  float accelX = 0, accelY = 0, accelZ = 0;
-  float gyroX = 0, gyroY = 0, gyroZ = 0;
-  float tempC = 25.0; // Temperatura por defecto
-  String activity = "unknown";
-  float imuMagnitude = 0.0;
-
-  if (mpuInitialized) {
-    sensors_event_t accelEvent, gyroEvent, tempEvent;
-    mpu.getEvent(&accelEvent, &gyroEvent, &tempEvent);
-    
-    accelX = accelEvent.acceleration.x;
-    accelY = accelEvent.acceleration.y;
-    accelZ = accelEvent.acceleration.z;
-    gyroX = gyroEvent.gyro.x;
-    gyroY = gyroEvent.gyro.y;
-    gyroZ = gyroEvent.gyro.z;
-    tempC = tempEvent.temperature;
-    
-    // Calcular magnitud total del acelerómetro y giroscopio
-    imuMagnitude = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
-    float gyroMagnitude = sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ);
-    
-    // Actualizar buffers circulares para análisis de patrones
-    accelBuffer[bufferIndex] = imuMagnitude;
-    gyroBuffer[bufferIndex] = gyroMagnitude;
-    bufferIndex = (bufferIndex + 1) % MAX_ACTIVITY_SAMPLES;
-    
-    // Actualizar promedios móviles
-    float totalAccel = 0, totalGyro = 0;
-    int validSamples = min(activitySamples + 1, MAX_ACTIVITY_SAMPLES);
-    
-    for (int i = 0; i < validSamples; i++) {
-      totalAccel += accelBuffer[i];
-      totalGyro += gyroBuffer[i];
-    }
-    
-    averageAccelMagnitude = totalAccel / validSamples;
-    averageGyroMagnitude = totalGyro / validSamples;
-    
-    if (activitySamples < MAX_ACTIVITY_SAMPLES) {
-      activitySamples++;
-    }
-    
-    // Análisis avanzado de actividad para sensor en la espalda
-    activity = analyzeBackpackActivity(averageAccelMagnitude, averageGyroMagnitude, currentSpeed, gpsValid, accelX, accelY, accelZ);
-    
-    // Debug logging detallado con timestamp
-    unsigned long currentTime = millis();
-    Serial.println("==================================================");
-    Serial.printf("🕒 TIMESTAMP: %lu ms (%lu seg)\n", currentTime, currentTime/1000);
-    Serial.printf("🎯 ACTIVIDAD DETECTADA: %s\n", activity.c_str());
-    Serial.printf("📊 MÉTRICAS DETALLADAS:\n");
-    Serial.printf("   - Acelerómetro promedio: %.2f m/s²\n", averageAccelMagnitude);
-    Serial.printf("   - Giroscopio promedio: %.2f rad/s\n", averageGyroMagnitude);
-    Serial.printf("   - Velocidad GPS: %.2f m/s (%.2f km/h)\n", currentSpeed, currentSpeed * 3.6);
-    Serial.printf("   - Componente Z: %.2f m/s²\n", accelZ);
-    Serial.printf("   - GPS válido: %s\n", gpsValid ? "SÍ" : "NO");
-    Serial.println("==================================================");
-  } else {
-    // Sin IMU, usar solo GPS para determinar actividad básica
-    activity = analyzeGPSOnlyActivity(currentSpeed, gpsValid);
-    
-    // Si tampoco hay GPS válido, usar actividad por defecto
-    if (activity == "unknown") {
-      activity = "resting"; // Por defecto descansando
-      Serial.println("⚠️ Sin IMU ni GPS válido, usando actividad por defecto: resting");
-    }
-  }
-
-  // CRÍTICO: Agregar datos IMU al JSON (SIEMPRE, incluso si IMU falla)
-  // El backend REQUIERE estos campos para validación
-  JsonObject accel = jsonDoc.createNestedObject("accelerometer");
-  accel["x"] = accelX;  // Si IMU falla, estos serán 0.0
-  accel["y"] = accelY;
-  accel["z"] = accelZ;
-
-  JsonObject gyro = jsonDoc.createNestedObject("gyroscope");
-  gyro["x"] = gyroX;
-  gyro["y"] = gyroY;
-  gyro["z"] = gyroZ;
-
-  // Agregar datos procesados y optimizados para la web
-  jsonDoc["temperature"] = tempC;
-  jsonDoc["activity"] = activity;
-  jsonDoc["activity_confidence"] = calculateActivityConfidence(activity, averageAccelMagnitude, averageGyroMagnitude, gpsValid);
-  jsonDoc["movement_intensity"] = calculateMovementIntensity(averageAccelMagnitude, averageGyroMagnitude);
-  jsonDoc["posture"] = analyzePosture(accelX, accelY, accelZ);
-  jsonDoc["imu_magnitude"] = imuMagnitude;
-  jsonDoc["imu_average"] = averageAccelMagnitude;
-  jsonDoc["gyro_average"] = averageGyroMagnitude;
-  
-  // Información adicional del estado del dispositivo
-  jsonDoc["wifi_rssi"] = WiFi.RSSI();
-  jsonDoc["free_heap"] = ESP.getFreeHeap();
-  jsonDoc["uptime_ms"] = millis();
-  
-  // Metadatos de análisis
-  jsonDoc["analysis_method"] = mpuInitialized ? "imu_gps_combined" : "gps_only";
-  jsonDoc["data_quality"] = gpsValid ? "high" : "medium";
-
-  // Convertir a string y enviar
-  String jsonString;
-  serializeJson(jsonDoc, jsonString);
-  
-  // Print detallado antes de enviar
-  Serial.println("📤 ENVIANDO DATOS AL BACKEND:");
-  Serial.printf("   🏷️  Device ID: %s\n", jsonDoc["deviceId"].as<String>().c_str());
-  Serial.printf("   🎭 Actividad: %s\n", jsonDoc["activity"].as<String>().c_str());
-  Serial.printf("   � Confianza: %.1f%%\n", jsonDoc["activity_confidence"].as<float>() * 100);
-  Serial.printf("   💪 Intensidad: %d%%\n", jsonDoc["movement_intensity"].as<int>());
-  Serial.printf("   🧍 Postura: %s\n", jsonDoc["posture"].as<String>().c_str());
-  Serial.printf("   📍 GPS: %s\n", jsonDoc["gps_valid"].as<bool>() ? "VÁLIDO" : "INVÁLIDO");
-  if (jsonDoc["gps_valid"].as<bool>()) {
-    Serial.printf("   🌍 Coordenadas: %.6f, %.6f\n", 
-                  jsonDoc["latitude"].as<float>(), jsonDoc["longitude"].as<float>());
-  }
-  Serial.printf("   📡 JSON completo: %s\n", jsonString.c_str());
-  Serial.println("==========================================");
-  
-  if (ws.sendTXT(jsonString)) {
-    Serial.println("✅ DATOS ENVIADOS EXITOSAMENTE AL BACKEND");
-  } else {
-    Serial.println("❌ ERROR ENVIANDO DATOS - WEBSOCKET DESCONECTADO");
-    wsConnected = false;
   }
 }
 
-// Función optimizada para análisis de actividad con sensor en la espalda de la mascota
-String analyzeBackpackActivity(float accelMag, float gyroMag, float speed, bool gpsValid, float accelX, float accelY, float accelZ) {
+void testGPSCommunication() {
+  Serial.println("🔍 Test GPS (5 segundos)...");
+  
+  unsigned long start = millis();
+  int chars = 0;
+  
+  while (millis() - start < 5000) {
+    if (SerialGPS.available()) {
+      SerialGPS.read();
+      chars++;
+    }
+    delay(10);
+  }
+  
+  Serial.printf("📊 GPS: %d caracteres recibidos\n", chars);
+  
+  if (chars > 0) {
+    Serial.println("✅ GPS comunicándose");
+  } else {
+    Serial.println("❌ GPS sin datos - verificar conexiones");
+  }
+}
+
+void debugGPSStatus() {
+  Serial.println("📡 ====== ESTADO GPS DETALLADO ======");
+  Serial.printf("   Ubicación válida: %s\n", gps.location.isValid() ? "SÍ" : "NO");
+  Serial.printf("   Satélites: %d\n", gps.satellites.value());
+  Serial.printf("   HDOP: %.2f\n", gps.hdop.hdop());
+  Serial.printf("   Tiempo válido: %s\n", gps.time.isValid() ? "SÍ" : "NO");
+  Serial.printf("   Fecha válida: %s\n", gps.date.isValid() ? "SÍ" : "NO");
+  
+  if (gps.location.isValid()) {
+    Serial.printf("   📍 Coordenadas: %.6f, %.6f\n", 
+                 gps.location.lat(), gps.location.lng());
+    Serial.printf("   ⏰ Edad ubicación: %lu ms\n", gps.location.age());
+    Serial.printf("   🎯 Precisión: %.2f metros\n", gps.hdop.hdop() * 5.0);
+  } else {
+    Serial.println("   ❌ Sin ubicación válida");
+  }
+  
+  if (gps.time.isValid()) {
+    Serial.printf("   🕒 Hora GPS: %02d:%02d:%02d\n", 
+                 gps.time.hour(), gps.time.minute(), gps.time.second());
+  }
+  
+  Serial.printf("   🔗 GPS Ready: %s\n", gpsReady ? "SÍ" : "NO");
+  Serial.printf("   📊 Caracteres procesados desde último debug\n");
+  Serial.println("=====================================");
+}
+
+// ============================================================================
+// ANÁLISIS DE ACTIVIDAD OPTIMIZADO
+// ============================================================================
+
+String analyzeActivity(float accelMag, float gyroMag, float speed, bool hasGPS) {
   float speedKmh = speed * 3.6;
   
-  // Analizar orientación del sensor (importante para sensor en la espalda)
-  float verticalComponent = abs(accelZ); // Componente vertical del acelerómetro
-  float horizontalMag = sqrt(accelX * accelX + accelY * accelY);
-  
-  Serial.printf("🔍 Análisis Espalda: Accel=%.2f, Gyro=%.2f, Speed=%.2f km/h, Vertical=%.2f\n", 
-                accelMag, gyroMag, speedKmh, verticalComponent);
-  
-  // Prioridad 1: Velocidad GPS muy alta (en transporte/vehículo)
-  if (gpsValid && speedKmh > 20.0) {
-    return "traveling";
+  // Análisis por velocidad GPS (más confiable)
+  if (hasGPS) {
+    if (speedKmh > 20.0) return "traveling";
+    if (speedKmh >= 8.0) return "running";
+    if (speedKmh >= 2.0) return "walking";
   }
   
-  // Prioridad 2: Análisis combinado de patrones de movimiento
-  
-  // Jugando - Movimientos erráticos e intensos (alta variabilidad)
+  // Análisis por IMU
   if (accelMag > thresholds.playing_accel && gyroMag > thresholds.playing_gyro) {
-    if (speedKmh >= 3.0 && speedKmh <= 15.0) { // Velocidad moderada con alta actividad
-      return "playing";
-    }
+    return "playing";
   }
-  
-  // Corriendo - Alta actividad con patrón rítmico
   if (accelMag > thresholds.running_accel && gyroMag > thresholds.running_gyro) {
-    if (gpsValid && speedKmh >= 8.0 && speedKmh <= 25.0) {
-      return "running";
-    }
-    // Sin GPS pero con actividad intensa
-    if (!gpsValid && accelMag > 17.0) {
-      return "running";
-    }
+    return "running";
   }
-  
-  // Caminando - Actividad moderada con movimiento hacia adelante
   if (accelMag > thresholds.walking_accel && gyroMag > thresholds.walking_gyro) {
-    if (gpsValid && speedKmh >= 1.5 && speedKmh < 8.0) {
-      return "walking";
-    }
-    // Sin GPS pero con patrón de caminata
-    if (!gpsValid && accelMag > 12.0 && accelMag <= 16.0) {
-      return "walking";
-    }
+    return "walking";
   }
-  
-  // Parado - Movimientos mínimos pero no completamente quieto
-  if (accelMag > thresholds.standing_accel && accelMag <= thresholds.walking_accel) {
-    if (gyroMag > thresholds.standing_gyro && gyroMag <= thresholds.walking_gyro) {
-      // Verificar si hay pequeños movimientos de cabeza/cuerpo
-      if (verticalComponent > 8.0 && verticalComponent < 12.0) {
-        return "standing";
-      }
-    }
-  }
-  
-  // Sentado - Posición estable con orientación específica
-  if (accelMag > thresholds.sitting_accel && accelMag <= thresholds.standing_accel) {
-    if (gyroMag <= thresholds.sitting_gyro) {
-      // El sensor en la espalda detecta cuando está sentado por la inclinación
-      if (verticalComponent < 8.0 && horizontalMag > 6.0) {
-        return "sitting";
-      }
-    }
-  }
-  
-  // Acostado/Durmiendo - Actividad mínima
-  if (accelMag <= thresholds.lying_accel && gyroMag <= thresholds.lying_gyro) {
-    if (speedKmh < 1.0) {
-      return "lying";
-    }
-  }
-  
-  // Casos por defecto basados en actividad general
-  if (speedKmh < 1.0 && accelMag < 12.0) {
-    return "resting";
-  } else if (accelMag > 15.0) {
-    return "active";
-  } else {
+  if (accelMag > thresholds.standing_accel && gyroMag > thresholds.standing_gyro) {
     return "standing";
   }
-}
-
-// Función para calcular confianza en la actividad detectada
-float calculateActivityConfidence(String activity, float accelMag, float gyroMag, bool gpsValid) {
-  float confidence = 0.5; // Confianza base
-  
-  // Ajustar confianza basada en la calidad de los datos
-  if (gpsValid) {
-    confidence += 0.2; // GPS válido aumenta confianza
+  if (accelMag <= thresholds.lying_accel && gyroMag <= thresholds.lying_gyro) {
+    return "lying";
   }
   
-  // Ajustar según la actividad detectada
-  if (activity == "lying" && accelMag < 10.0 && gyroMag < 1.0) {
-    confidence = 0.95; // Muy seguro cuando está quieto
-  } else if (activity == "running" && accelMag > 16.0 && gyroMag > 5.0) {
-    confidence = 0.90; // Muy seguro cuando corre
-  } else if (activity == "walking" && accelMag > 12.0 && accelMag < 16.0) {
-    confidence = 0.85; // Bastante seguro caminando
-  } else if (activity == "playing" && accelMag > 18.0) {
-    confidence = 0.80; // Seguro jugando con alta actividad
-  }
-  
-  return min(0.99f, max(0.30f, confidence)); // Limitar entre 30% y 99%
+  return "resting";
 }
 
-// Función para calcular intensidad de movimiento (0-100%)
+float calculateActivityConfidence(const String& activity, float accelMag, float gyroMag, bool hasGPS) {
+  float confidence = 0.6; // Base
+  
+  if (hasGPS) confidence += 0.2;
+  
+  if (activity == "lying" && accelMag < 10.0) confidence = 0.95;
+  else if (activity == "running" && accelMag > 16.0) confidence = 0.90;
+  else if (activity == "walking" && accelMag > 12.0) confidence = 0.85;
+  
+  return constrain(confidence, 0.3, 0.99);
+}
+
 int calculateMovementIntensity(float accelMag, float gyroMag) {
-  // Normalizar la intensidad basada en rangos típicos
-  float accelIntensity = min(100.0f, (accelMag - 9.0f) * 5.0f); // 9G base, escalar
-  float gyroIntensity = min(100.0f, gyroMag * 15.0f); // Escalar giroscopio
-  
-  int intensity = (int)((accelIntensity + gyroIntensity) / 2.0f);
-  return max(0, min(100, intensity));
+  float intensity = ((accelMag - 9.0) * 4.0 + gyroMag * 12.0) / 2.0;
+  return constrain((int)intensity, 0, 100);
 }
 
-// Función para analizar postura basada en orientación del sensor
 String analyzePosture(float accelX, float accelY, float accelZ) {
   float totalMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
+  
+  if (totalMag < 0.1) return "unknown";
   
   // Normalizar componentes
   float normX = accelX / totalMag;
@@ -607,84 +401,322 @@ String analyzePosture(float accelX, float accelY, float accelZ) {
   }
 }
 
-// Función mejorada para análisis basado solo en GPS (cuando IMU no está disponible)
-String analyzeGPSOnlyActivity(float speed, bool gpsValid) {
-  if (!gpsValid) {
-    return "resting"; // Sin GPS válido, asumir descansando
-  }
+// ============================================================================
+// ENVÍO DE DATOS
+// ============================================================================
+
+void sendPetData() {
+  jsonDoc.clear();
   
-  float speedKmh = speed * 3.6;
+  // Datos básicos
+  jsonDoc["petId"] = 1;
+  jsonDoc["deviceId"] = "ESP32C6_OPTIMIZED";
+  jsonDoc["timestamp"] = millis();
+  jsonDoc["battery"] = calculateBatteryLevel();
+  jsonDoc["connectionStatus"] = "connected";
+  jsonDoc["deviceActive"] = true; // Agregar este campo que el backend puede necesitar
   
-  // Análisis más detallado basado en velocidad GPS
-  if (speedKmh > 25.0) {
-    return "traveling"; // En vehículo
-  } else if (speedKmh >= 12.0) {
-    return "running"; // Corriendo rápido
-  } else if (speedKmh >= 4.0) {
-    return "walking"; // Caminando o trotando
-  } else if (speedKmh >= 1.0) {
-    return "standing"; // Movimiento muy lento, probablemente parado con pequeños movimientos
+  // Datos GPS
+  bool gpsValid = gps.location.isValid() && gps.location.age() < 15000; // Aumentado a 15 segundos
+  
+  if (gpsValid) {
+    float lat = gps.location.lat();
+    float lng = gps.location.lng();
+    
+    // Verificar que las coordenadas sean razonables
+    if (lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0 && 
+        lat != 0.0 && lng != 0.0) {
+      
+      jsonDoc["latitude"] = lat;
+      jsonDoc["longitude"] = lng;
+      jsonDoc["gps_valid"] = true;
+      jsonDoc["gps_satellites"] = gps.satellites.value();
+      jsonDoc["gps_hdop"] = gps.hdop.hdop();
+      jsonDoc["gps_source"] = "esp32c6_nmea"; // Identificar fuente de datos
+      
+      // Log detallado de coordenadas enviadas
+      Serial.printf("📍 ENVIANDO COORDS: lat=%.6f, lng=%.6f, edad=%lu ms\n", 
+                   lat, lng, gps.location.age());
+      
+      // Calcular velocidad solo si tenemos posición anterior válida
+      if (previousLat != 0.0 && previousLng != 0.0 && lastGPSTime > 0) {
+        float distance = calculateDistance(previousLat, previousLng, lat, lng);
+        float timeElapsed = (millis() - lastGPSTime) / 1000.0;
+        
+        if (timeElapsed > 0 && timeElapsed < 300) { // Solo si es menor a 5 minutos
+          currentSpeed = distance / timeElapsed;
+          jsonDoc["gps_speed"] = currentSpeed;
+          jsonDoc["gps_speed_kmh"] = currentSpeed * 3.6;
+          
+          Serial.printf("🏃 Velocidad: %.2f m/s (%.2f km/h), distancia: %.2f m\n", 
+                       currentSpeed, currentSpeed * 3.6, distance);
+        }
+      }
+      
+      // Actualizar posición anterior SIEMPRE que tengamos coordenadas válidas
+      previousLat = lat;
+      previousLng = lng;
+      lastGPSTime = millis();
+      
+    } else {
+      Serial.printf("❌ Coordenadas inválidas: lat=%.6f, lng=%.6f\n", lat, lng);
+      jsonDoc["latitude"] = nullptr;
+      jsonDoc["longitude"] = nullptr;
+      jsonDoc["gps_valid"] = false;
+      jsonDoc["gps_speed"] = 0.0;
+      currentSpeed = 0.0;
+    }
+    
   } else {
-    return "resting"; // Sin movimiento significativo
+    jsonDoc["latitude"] = nullptr;
+    jsonDoc["longitude"] = nullptr;
+    jsonDoc["gps_valid"] = false;
+    jsonDoc["gps_speed"] = 0.0;
+    jsonDoc["gps_source"] = "none"; // Sin fuente GPS válida
+    currentSpeed = 0.0;
+    
+    if (gps.location.isValid()) {
+      Serial.printf("❌ GPS válido pero datos antiguos (edad: %lu ms)\n", gps.location.age());
+    } else {
+      Serial.println("❌ GPS ubicación no válida");
+    }
+  }
+  
+  // Datos IMU
+  float accelX = 0, accelY = 0, accelZ = 0;
+  float gyroX = 0, gyroY = 0, gyroZ = 0;
+  float tempC = 25.0;
+  float accelMag = 0.0;
+  String activity = "unknown";
+  
+  if (mpuInitialized) {
+    sensors_event_t accelEvent, gyroEvent, tempEvent;
+    mpu.getEvent(&accelEvent, &gyroEvent, &tempEvent);
+    
+    accelX = accelEvent.acceleration.x;
+    accelY = accelEvent.acceleration.y;
+    accelZ = accelEvent.acceleration.z;
+    gyroX = gyroEvent.gyro.x;
+    gyroY = gyroEvent.gyro.y;
+    gyroZ = gyroEvent.gyro.z;
+    tempC = tempEvent.temperature;
+    
+    accelMag = sqrt(accelX*accelX + accelY*accelY + accelZ*accelZ);
+    float gyroMag = sqrt(gyroX*gyroX + gyroY*gyroY + gyroZ*gyroZ);
+    
+    // Actualizar buffers para promedio móvil
+    accelBuffer[bufferIndex] = accelMag;
+    gyroBuffer[bufferIndex] = gyroMag;
+    bufferIndex = (bufferIndex + 1) % MAX_SAMPLES;
+    
+    if (sampleCount < MAX_SAMPLES) sampleCount++;
+    
+    // Calcular promedios
+    float totalAccel = 0, totalGyro = 0;
+    for (int i = 0; i < sampleCount; i++) {
+      totalAccel += accelBuffer[i];
+      totalGyro += gyroBuffer[i];
+    }
+    avgAccelMag = totalAccel / sampleCount;
+    avgGyroMag = totalGyro / sampleCount;
+    
+    activity = analyzeActivity(avgAccelMag, avgGyroMag, currentSpeed, gpsValid);
+    
+  } else {
+    // Sin IMU, análisis solo por GPS
+    if (gpsValid) {
+      float speedKmh = currentSpeed * 3.6;
+      if (speedKmh > 15.0) activity = "running";
+      else if (speedKmh > 3.0) activity = "walking";
+      else activity = "resting";
+    } else {
+      activity = "resting";
+    }
+  }
+  
+  // Agregar datos al JSON
+  JsonObject accel = jsonDoc.createNestedObject("accelerometer");
+  accel["x"] = accelX;
+  accel["y"] = accelY;
+  accel["z"] = accelZ;
+  
+  JsonObject gyro = jsonDoc.createNestedObject("gyroscope");
+  gyro["x"] = gyroX;
+  gyro["y"] = gyroY;
+  gyro["z"] = gyroZ;
+  
+  jsonDoc["temperature"] = tempC;
+  jsonDoc["activity"] = activity;
+  jsonDoc["activity_confidence"] = calculateActivityConfidence(activity, avgAccelMag, avgGyroMag, gpsValid);
+  jsonDoc["movement_intensity"] = calculateMovementIntensity(avgAccelMag, avgGyroMag);
+  jsonDoc["imu_magnitude"] = accelMag;
+  
+  // Información adicional que el backend puede requerir
+  jsonDoc["posture"] = analyzePosture(accelX, accelY, accelZ);
+  jsonDoc["imu_average"] = avgAccelMag;
+  jsonDoc["gyro_average"] = avgGyroMag;
+  
+  // Estado del sistema
+  jsonDoc["wifi_rssi"] = WiFi.RSSI();
+  jsonDoc["free_heap"] = ESP.getFreeHeap();
+  jsonDoc["uptime_ms"] = millis();
+  
+  // Metadatos de análisis para el backend
+  jsonDoc["analysis_method"] = mpuInitialized ? "imu_gps_combined" : "gps_only";
+  jsonDoc["data_quality"] = gpsValid ? "high" : "medium";
+  
+  // Enviar datos
+  String jsonString;
+  serializeJson(jsonDoc, jsonString);
+  
+  Serial.printf("📤 Enviando: %s | GPS:%s | Sats:%d\n", 
+                activity.c_str(), 
+                gpsValid ? "✅" : "❌", 
+                gps.satellites.value());
+  
+  // Log completo del JSON para debugging
+  Serial.printf("📡 JSON COMPLETO: %s\n", jsonString.c_str());
+  
+  if (ws.sendTXT(jsonString)) {
+    Serial.println("✅ Datos enviados exitosamente al backend");
+    
+    // Confirmar datos GPS específicos enviados
+    if (jsonDoc["gps_valid"].as<bool>()) {
+      Serial.printf("   ✅ GPS: %.6f, %.6f enviado correctamente\n", 
+                   jsonDoc["latitude"].as<float>(), 
+                   jsonDoc["longitude"].as<float>());
+    }
+  } else {
+    Serial.println("❌ Error enviando datos - WebSocket desconectado");
+    wsConnected = false;
   }
 }
 
-// Función para calcular distancia entre dos puntos GPS (fórmula haversine)
+// ============================================================================
+// FUNCIONES DE UTILIDAD
+// ============================================================================
+
 float calculateDistance(float lat1, float lng1, float lat2, float lng2) {
-  const float R = 6371000; // Radio de la Tierra en metros
-  float dLat = (lat2 - lat1) * PI / 180.0;
-  float dLng = (lng2 - lng1) * PI / 180.0;
+  const float R = 6371000; // Radio Tierra en metros
+  float dLat = radians(lat2 - lat1);
+  float dLng = radians(lng2 - lng1);
   
-  float a = sin(dLat/2) * sin(dLat/2) +
-            cos(lat1 * PI / 180.0) * cos(lat2 * PI / 180.0) *
+  float a = sin(dLat/2) * sin(dLat/2) + 
+            cos(radians(lat1)) * cos(radians(lat2)) * 
             sin(dLng/2) * sin(dLng/2);
-  float c = 2 * atan2(sqrt(a), sqrt(1-a));
   
-  return R * c; // Distancia en metros
+  return R * 2 * atan2(sqrt(a), sqrt(1-a));
 }
 
-// Función para calcular nivel de batería (simulado)
 int calculateBatteryLevel() {
-  // En un proyecto real, leerías el voltaje de la batería
-  // Aquí simulamos una batería que va bajando lentamente
   static int batteryLevel = 100;
-  static unsigned long lastBatteryUpdate = 0;
+  static unsigned long lastUpdate = 0;
   
-  if (millis() - lastBatteryUpdate > 300000) { // Cada 5 minutos
-    batteryLevel = max(10, batteryLevel - 1); // Nunca bajar de 10%
-    lastBatteryUpdate = millis();
+  if (millis() - lastUpdate > 300000) { // Cada 5 minutos
+    batteryLevel = max(10, batteryLevel - 1);
+    lastUpdate = millis();
   }
   
   return batteryLevel;
 }
 
-// Función para intentar reconexión
-void attemptReconnection() {
-  unsigned long now = millis();
-  
-  if (now - lastReconnect < RECONNECT_INTERVAL) {
-    return; // No es momento de reintentar
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.println("❌ WebSocket desconectado del backend");
+      wsConnected = false;
+      break;
+      
+    case WStype_CONNECTED: {
+      Serial.printf("✅ WebSocket conectado al backend: %s\n", payload);
+      wsConnected = true;
+      
+      // Enviar mensaje de identificación con información detallada
+      DynamicJsonDocument connectMsg(256);
+      connectMsg["type"] = "device_connect";
+      connectMsg["deviceId"] = "ESP32C6_OPTIMIZED";
+      connectMsg["petId"] = 1;
+      connectMsg["version"] = "2.0";
+      connectMsg["capabilities"] = "gps,imu,activity";
+      
+      String connectStr;
+      serializeJson(connectMsg, connectStr);
+      ws.sendTXT(connectStr);
+      
+      Serial.printf("📡 Enviado mensaje de conexión: %s\n", connectStr.c_str());
+      break;
+    }
+      
+    case WStype_TEXT:
+      Serial.printf("📨 Mensaje del backend: %s\n", payload);
+      
+      // Verificar si el backend confirma recepción de datos
+      if (strstr((char*)payload, "data_received") != NULL) {
+        Serial.println("✅ Backend confirmó recepción de datos de Max");
+      }
+      break;
+      
+    case WStype_ERROR:
+      Serial.printf("❌ Error WebSocket: %s\n", payload);
+      wsConnected = false;
+      break;
+      
+    default:
+      Serial.printf("🔍 Evento WebSocket: %d\n", type);
+      break;
   }
+}
+
+void attemptReconnection() {
+  if (millis() - lastReconnect < RECONNECT_INTERVAL) return;
+  lastReconnect = millis();
   
-  lastReconnect = now;
-  
-  // Verificar WiFi primero
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("🔄 Reintentando conexión WiFi...");
+    Serial.println("🔄 Reconectando WiFi...");
     WiFi.begin(ssid, password);
     wifiConnected = false;
-    wsConnected = false; // Si no hay WiFi, no hay WebSocket
+    wsConnected = false;
     return;
-  } else {
-    wifiConnected = true;
   }
   
-  // Verificar WebSocket
+  wifiConnected = true;
+  
   if (!wsConnected) {
-    Serial.println("🔄 Reintentando conexión WebSocket...");
+    Serial.println("🔄 Reconectando WebSocket...");
     ws.disconnect();
     delay(1000);
     ws.beginSSL(ws_host, ws_port, ws_path);
     ws.setExtraHeaders("Origin: https://pet-tracker-production.up.railway.app");
+  }
+}
+
+void printSystemStatus() {
+  Serial.println("📊 Estado del sistema:");
+  Serial.printf("   WiFi: %s", wifiConnected ? "✅" : "❌");
+  if (wifiConnected) {
+    Serial.printf(" (RSSI: %d dBm)", WiFi.RSSI());
+  }
+  Serial.println();
+  
+  Serial.printf("   WebSocket: %s", wsConnected ? "✅" : "❌");
+  if (wsConnected) {
+    Serial.printf(" (Conectado a %s)", ws_host);
+  }
+  Serial.println();
+  
+  Serial.printf("   IMU: %s\n", mpuInitialized ? "✅" : "❌");
+  Serial.printf("   GPS: %s", gpsInitialized ? "✅" : "❌");
+  if (gpsReady) {
+    Serial.printf(" (LISTO con %d sats)", gps.satellites.value());
+  }
+  Serial.println();
+  
+  Serial.printf("   Memoria libre: %d bytes\n", ESP.getFreeHeap());
+  Serial.printf("   Device ID: ESP32C6_OPTIMIZED\n");
+  Serial.printf("   Pet ID: 1 (Max)\n");
+  
+  if (gpsReady && gps.location.isValid()) {
+    Serial.printf("   📍 Última ubicación: %.6f, %.6f\n", 
+                 gps.location.lat(), gps.location.lng());
   }
 }

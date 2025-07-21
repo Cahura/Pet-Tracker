@@ -63,6 +63,27 @@ import { NotificationService } from '../notification/notification';
               <span>{{ lastBatteryUpdate?.signalStrength }}%</span>
             </div>
             
+            <!-- Datos mejorados del ESP32C6 -->
+            <div class="data-row" *ngIf="lastIMUUpdate?.activity_confidence">
+              <i class="fas fa-chart-line"></i>
+              <span>Confianza: {{ (lastIMUUpdate.activity_confidence * 100) | number:'1.0-0' }}%</span>
+            </div>
+            
+            <div class="data-row" *ngIf="lastIMUUpdate?.movement_intensity !== undefined">
+              <i class="fas fa-tachometer-alt"></i>
+              <span>Intensidad: {{ lastIMUUpdate.movement_intensity }}%</span>
+            </div>
+            
+            <div class="data-row" *ngIf="lastIMUUpdate?.posture">
+              <i class="fas fa-arrows-alt"></i>
+              <span>Postura: {{ getPostureText(lastIMUUpdate.posture) }}</span>
+            </div>
+            
+            <div class="data-row" *ngIf="lastIMUUpdate?.gps_speed_kmh !== undefined && lastIMUUpdate.gps_speed_kmh > 0">
+              <i class="fas fa-running"></i>
+              <span>{{ lastIMUUpdate.gps_speed_kmh | number:'1.1-1' }} km/h</span>
+            </div>
+            
             <div class="data-row">
               <i class="fas fa-map-marker-alt"></i>
               <span>{{ selectedPet?.location || 'Lima, Perú' }}</span>
@@ -1794,15 +1815,27 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           gyroY: data.gyroscope.y,
           gyroZ: data.gyroscope.z,
           activity: data.activity || 'unknown',
-          timestamp: data.timestamp
+          timestamp: data.timestamp,
+          activity_confidence: data.activity_confidence,
+          movement_intensity: data.movement_intensity,
+          posture: data.posture,
+          gps_speed_kmh: data.gps_speed_kmh
         };
         
-        // Debug logging
-        console.log('Datos recibidos del ESP32C6:', {
-          activity: data.activity,
-          connectionStatus: data.connectionStatus,
-          timestamp: data.timestamp
-        });
+        // Debug logging detallado
+        console.log('\n🔔 ===== DATOS RECIBIDOS EN FRONTEND =====');
+        console.log(`🕒 Timestamp: ${new Date().toLocaleTimeString()}`);
+        console.log(`🏷️  Device ID: ${data.deviceId}`);
+        console.log(`🎭 Actividad recibida: ${data.activity || 'NO DEFINIDA'}`);
+        console.log(`📈 Confianza: ${data.activity_confidence ? (data.activity_confidence * 100).toFixed(1) + '%' : 'N/A'}`);
+        console.log(`💪 Intensidad: ${data.movement_intensity !== undefined ? data.movement_intensity + '%' : 'N/A'}`);
+        console.log(`🧍 Postura: ${data.posture || 'N/A'}`);
+        console.log(`📍 GPS válido: ${data.gps_valid ? 'SÍ' : 'NO'}`);
+        if (data.gps_valid && data.latitude && data.longitude) {
+          console.log(`🌍 Coordenadas: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
+          console.log(`🏃 Velocidad: ${data.gps_speed_kmh ? data.gps_speed_kmh.toFixed(1) + ' km/h' : 'N/A'}`);
+        }
+        console.log('=========================================\n');
         
         this.updatePetActivity(this.lastIMUUpdate);
       }
@@ -1913,37 +1946,54 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   private updatePetActivity(imuData: any): void {
-    console.log('Actualizando actividad de mascota:', imuData.activity);
+    console.log('\n🔄 ===== ACTUALIZANDO ACTIVIDAD EN MAPA =====');
+    console.log(`🎭 Actividad a aplicar: ${imuData.activity}`);
+    console.log(`📈 Confianza: ${imuData.activity_confidence ? (imuData.activity_confidence * 100).toFixed(1) + '%' : 'N/A'}`);
+    console.log(`💪 Intensidad: ${imuData.movement_intensity !== undefined ? imuData.movement_intensity + '%' : 'N/A'}`);
     
     // Solo actualizar si es la mascota Max (que recibe datos del ESP32)
     if (this.petMarker) {
       const markerElement = this.petMarker.getElement();
       const petName = markerElement.getAttribute('data-pet-name');
       
+      console.log(`🏷️  Marcador encontrado para: ${petName}`);
+      
       // Solo Max recibe actualizaciones del ESP32
       if (petName === 'Max') {
         // Optimización: solo cambiar si el estado es diferente
         const currentState = markerElement.className.match(/state-(\w+)/)?.[1];
         
+        console.log(`🔄 Estado actual del marcador: ${currentState}`);
+        console.log(`🎯 Nuevo estado a aplicar: ${imuData.activity}`);
+        
         if (currentState !== imuData.activity) {
           // Actualizar clases CSS según el estado con transición suave
-          markerElement.classList.remove('state-resting', 'state-walking', 'state-running', 'state-traveling', 'state-disconnected');
+          markerElement.classList.remove('state-resting', 'state-walking', 'state-running', 'state-traveling', 'state-lying', 'state-sitting', 'state-standing', 'state-playing', 'state-disconnected');
           markerElement.classList.add(`state-${imuData.activity}`);
+          
+          console.log(`✅ ESTADO VISUAL ACTUALIZADO: ${currentState} → ${imuData.activity}`);
           
           // Actualizar el estado en el servicio
           if (this.selectedPet && this.selectedPet.name === 'Max') {
-            const validActivity = imuData.activity as 'resting' | 'walking' | 'running' | 'traveling';
+            const validActivity = imuData.activity as 'resting' | 'walking' | 'running' | 'traveling' | 'lying' | 'sitting' | 'standing' | 'playing';
             this.petSelectionService.updatePetActivityState(this.selectedPet.id, validActivity);
-            console.log(`🔄 Max activity state updated in service: ${validActivity}`);
+            console.log(`🔄 Estado en servicio actualizado: ${validActivity}`);
           }
           
           // Trigger a subtle animation for activity change
           this.triggerActivityChangeAnimation(markerElement, imuData.activity);
           
-          console.log(`Max activity updated from ${currentState} to: ${imuData.activity}`);
+          console.log(`🎨 Animación de cambio activada para: ${imuData.activity}`);
+        } else {
+          console.log(`⚪ Sin cambios - estado ya es: ${currentState}`);
         }
+      } else {
+        console.log(`⚠️ Marcador no es Max, ignorando actualización para: ${petName}`);
       }
+    } else {
+      console.log(`❌ No se encontró marcador de mascota`);
     }
+    console.log('==========================================\n');
   }
 
   // Animación sutil para cambios de actividad
@@ -2428,6 +2478,21 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     this.popupTimeout = setTimeout(() => {
       this.closePetPopup();
     }, 200);
+  }
+
+  // Función para convertir postura a texto legible
+  public getPostureText(posture: string): string {
+    const postureMap: { [key: string]: string } = {
+      'upright': 'Erguido',
+      'upside_down': 'Boca abajo',
+      'forward_lean': 'Inclinado adelante',
+      'backward_lean': 'Inclinado atrás',
+      'right_lean': 'Inclinado derecha',
+      'left_lean': 'Inclinado izquierda',
+      'tilted': 'Inclinado'
+    };
+    
+    return postureMap[posture] || 'Desconocida';
   }
 
   // Actualiza el marcador de la mascota en el mapa (solo para Max con datos del ESP32)

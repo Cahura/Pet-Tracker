@@ -7,8 +7,13 @@ export interface PetData {
   deviceId: string;
   timestamp: number;
   coordinates: [number, number];
+  latitude?: number; // Coordenada GPS
+  longitude?: number; // Coordenada GPS
   battery: number;
-  activity: string; // "resting", "walking", "running", "traveling"
+  activity: string; // "resting", "walking", "running", "traveling", "lying", "sitting", "standing", "playing"
+  activity_confidence?: number; // Confianza en la actividad (0-1)
+  movement_intensity?: number; // Intensidad de movimiento (0-100%)
+  posture?: string; // Postura detectada
   accelerometer: { x: number; y: number; z: number };
   gyroscope: { x: number; y: number; z: number };
   temperature: number;
@@ -19,6 +24,7 @@ export interface PetData {
   gps_valid?: boolean; // Si el GPS es válido
   imu_magnitude?: number; // Magnitud del acelerómetro
   imu_average?: number; // Promedio de magnitud IMU
+  gyro_average?: number; // Promedio de magnitud giroscopio
   wifi_rssi?: number; // Señal WiFi
   free_heap?: number; // Memoria disponible
   uptime_ms?: number; // Tiempo de funcionamiento

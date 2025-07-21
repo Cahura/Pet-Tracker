@@ -14,7 +14,7 @@ export interface PetData {
   color: string; // Primary color for the pet
   gradient: string; // Gradient for avatar background
   photoUrl?: string; // URL de la foto principal de la mascota
-  activityState?: 'resting' | 'walking' | 'running' | 'traveling' | 'disconnected'; // Estado de actividad actualizado
+  activityState?: 'resting' | 'walking' | 'running' | 'traveling' | 'lying' | 'sitting' | 'standing' | 'playing' | 'disconnected'; // Estado de actividad actualizado
   imuData?: IMUData; // Datos del sensor IMU en tiempo real
   activityHistory?: ActivityRecord[]; // Historial de actividad
 }
@@ -172,7 +172,7 @@ export class PetSelectionService {
     }
   }
 
-  updatePetActivityState(petId: number, activityState: 'resting' | 'walking' | 'running' | 'traveling' | 'disconnected') {
+  updatePetActivityState(petId: number, activityState: 'resting' | 'walking' | 'running' | 'traveling' | 'lying' | 'sitting' | 'standing' | 'playing' | 'disconnected') {
     const pet = this.demoAnimals.find(p => p.id === petId);
     if (pet) {
       pet.activityState = activityState;

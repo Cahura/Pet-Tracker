@@ -100,11 +100,17 @@ export class WebSocketService {
       
       // Normalizar datos: convertir latitude/longitude a coordinates si es necesario
       if (parsedData.latitude !== undefined && parsedData.longitude !== undefined) {
+        console.log(`🔍 DEBUGGING COORDENADAS RECIBIDAS:`);
+        console.log(`   latitude: ${parsedData.latitude}`);
+        console.log(`   longitude: ${parsedData.longitude}`);
+        console.log(`   gps_valid: ${parsedData.gps_valid}`);
+        
         // Solo crear coordenadas si son válidas (no null, no 0,0)
         if (parsedData.latitude !== null && parsedData.longitude !== null && 
             parsedData.latitude !== 0 && parsedData.longitude !== 0) {
           parsedData.coordinates = [parsedData.longitude, parsedData.latitude];
-          console.log(`📍 Coordenadas GPS válidas para petId ${parsedData.petId}: [${parsedData.longitude}, ${parsedData.latitude}]`);
+          console.log(`📍 Coordenadas GPS válidas para petId ${parsedData.petId}: [lng: ${parsedData.longitude}, lat: ${parsedData.latitude}]`);
+          console.log(`🌍 Verificar en Google Maps: https://www.google.com/maps?q=${parsedData.latitude},${parsedData.longitude}`);
         } else {
           // Coordenadas inválidas - no actualizar ubicación
           parsedData.coordinates = null;

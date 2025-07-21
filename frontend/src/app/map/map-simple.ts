@@ -1879,6 +1879,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           locationData.longitude !== 0 && locationData.latitude !== 0) {
         const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
         console.log('✅ Actualizando ubicación de Max con GPS válido del ESP32C6:', newCoordinates);
+        console.log(`🔍 DEBUGGING COORDENADAS DEL MAPA:`);
+        console.log(`   Recibido - lat: ${locationData.latitude}, lng: ${locationData.longitude}`);
+        console.log(`   Mapbox format - [lng, lat]: [${newCoordinates[0]}, ${newCoordinates[1]}]`);
+        console.log(`   Verificar ubicación: https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}`);
         
         // Verificar si la ubicación ha cambiado significativamente
         if (this.petLocation) {

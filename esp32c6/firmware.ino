@@ -23,9 +23,9 @@
 // CONFIGURACIÓN DE RED
 // ============================================================================
 
-// WiFi (CAMBIAR POR TUS CREDENCIALES)
-const char* ssid = "TU_WIFI_SSID";           
-const char* password = "TU_WIFI_PASSWORD";
+// WiFi (CAMBIAR POR TUS CREDENCIALES REALES)
+const char* ssid = "TU_RED_WIFI_REAL";           // ⚠️ CAMBIAR POR TU RED WIFI
+const char* password = "TU_PASSWORD_WIFI_REAL";  // ⚠️ CAMBIAR POR TU PASSWORD
 
 // WebSocket para Railway
 const char* ws_host = "pet-tracker-production.up.railway.app";
@@ -437,6 +437,10 @@ void sendPetData() {
       // Log detallado de coordenadas enviadas
       Serial.printf("📍 ENVIANDO COORDS: lat=%.6f, lng=%.6f, edad=%lu ms\n", 
                    lat, lng, gps.location.age());
+      Serial.printf("🌍 COORDENADAS ENVIADAS AL BACKEND:\n");
+      Serial.printf("   latitude: %.6f\n", lat);
+      Serial.printf("   longitude: %.6f\n", lng);
+      Serial.printf("   Tu ubicación debería estar en: https://www.google.com/maps?q=%.6f,%.6f\n", lat, lng);
       
       // Calcular velocidad solo si tenemos posición anterior válida
       if (previousLat != 0.0 && previousLng != 0.0 && lastGPSTime > 0) {

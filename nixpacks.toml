@@ -8,8 +8,8 @@ PORT = "3000"
 [phases.build]
 cmds = [
     "echo 'Building Pet Tracker for Railway...'",
-    "cd frontend && npm ci",
-    "cd frontend && npm run build:prod", 
+    "npm install",
+    "npm run railway:build",
     "echo 'Build completed successfully!'"
 ]
 

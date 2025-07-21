@@ -1,4 +1,4 @@
-providers = ["nodejs"]
+providers = ["node"]
 
 [variables]
 NODE_VERSION = "20.19.0"

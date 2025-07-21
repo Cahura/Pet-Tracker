@@ -137,8 +137,8 @@ export class NotificationService {
 
   public showConnectionInactive(petName: string): void {
     this.showNotification({
-      title: `${petName} - Sistema Inactivo`,
-      message: 'ESP32C6 desconectado - No se reciben datos del dispositivo',
+      title: `${petName} - Dispositivo Desconectado`,
+      message: 'No se reciben datos del dispositivo de seguimiento',
       type: 'warning',
       duration: 7000
     });
@@ -146,8 +146,8 @@ export class NotificationService {
 
   public showConnectionRestored(petName: string): void {
     this.showNotification({
-      title: `${petName} - Conexión Restaurada`,
-      message: 'ESP32C6 reconectado - Datos en tiempo real disponibles',
+      title: `${petName} - Dispositivo Conectado`,
+      message: 'Dispositivo reconectado - Datos en tiempo real disponibles',
       type: 'success',
       duration: 5000
     });

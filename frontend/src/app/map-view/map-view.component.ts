@@ -109,7 +109,7 @@ import { Subscription } from 'rxjs';
                 <p class="pet-breed">{{ currentAnimal.breed }}</p>
                 <div class="pet-stats">
                   <div class="stat">
-                    <i class="fas fa-signal"></i>
+                    <i class="fas fa-wifi"></i>
                     <div class="status-indicator-inline">
                       <div class="status-dot" [class]="getConnectionStatus().isConnected ? 'online' : 'offline'"></div>
                       <span>{{ getConnectionStatus().isConnected ? 'Conectado' : 'Desconectado' }}</span>
@@ -353,13 +353,23 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
         if (updatedPet && updatedPet.name === 'Max') {
           const isNowConnected = updatedPet.status === 'online';
           
+          console.log('🔔 Max status change detected:', {
+            previousStatus: this.previousConnectionStatus,
+            newStatus: isNowConnected,
+            updatedPet: updatedPet
+          });
+          
           // Solo notificar cambios después de la inicialización
           if (this.previousConnectionStatus !== null && this.previousConnectionStatus !== isNowConnected) {
             if (isNowConnected) {
+              console.log('🟢 Showing connection restored notification');
               this.notificationService.showConnectionRestored(this.currentAnimal.name);
             } else {
+              console.log('🔴 Showing connection inactive notification');
               this.notificationService.showConnectionInactive(this.currentAnimal.name);
             }
+          } else {
+            console.log('ℹ️ No notification needed - status unchanged or initial load');
           }
           
           this.previousConnectionStatus = isNowConnected;
@@ -390,12 +400,14 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   getLastUpdateText(): string {
     if (this.currentAnimal?.name === 'Max') {
       // Para Max: mostrar tiempo real basado en los datos del ESP32C6
-      if (this.mapComponent?.isESP32Connected && this.mapComponent?.lastIMUUpdate?.timestamp) {
-        return this.mapComponent.getTimeAgo(this.mapComponent.lastIMUUpdate.timestamp);
-      } else if (this.mapComponent?.lastLocationUpdate?.timestamp) {
-        return this.mapComponent.getTimeAgo(this.mapComponent.lastLocationUpdate.timestamp);
+      if (this.mapComponent?.isESP32Connected) {
+        if (this.mapComponent?.lastESP32DataTime) {
+          return this.mapComponent.getTimeAgo(this.mapComponent.lastESP32DataTime);
+        } else {
+          return 'Conectado ahora';
+        }
       } else {
-        return 'Sin datos';
+        return 'Sin conexión';
       }
     } else {
       // Para mascotas demo: mostrar tiempo fijo

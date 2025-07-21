@@ -1,4 +1,4 @@
-/* Notifications System - Apple Liquid Glass Design */
+/* Notifications System - Apple Liquid Glass Design - Mobile Optimized */
 
 .notifications-container {
   position: fixed;
@@ -10,16 +10,40 @@
   width: 90%;
   pointer-events: none;
   
-  // Responsivo
-  @media (max-width: 768px) {
+  // Responsivo - mobile first approach
+  @media (max-width: 480px) {
+    top: 20px; // Más cerca del top en móviles
+    max-width: calc(100vw - 20px); // Full width minus smaller margins for better centering
+    width: calc(100vw - 20px);
+    left: 50%;
+    transform: translateX(-50%); // Keep centered on mobile
+  }
+  
+  @media (min-width: 481px) and (max-width: 768px) {
     top: 70px;
     max-width: 350px;
     width: 95%;
   }
   
-  @media (max-width: 480px) {
-    top: 60px;
-    max-width: 320px;
+  @media (min-width: 769px) {
+    top: 80px;
+    max-width: 400px;
+    width: 90%;
+  }
+  
+  // iPhone specific fixes - ensuring perfect centering
+  @supports (-webkit-touch-callout: none) {
+    // iOS Safari specific
+    top: env(safe-area-inset-top, 20px);
+    top: calc(env(safe-area-inset-top, 20px) + 20px);
+    
+    @media (max-width: 480px) {
+      top: calc(env(safe-area-inset-top, 10px) + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100vw - 20px);
+      max-width: calc(100vw - 20px);
+    }
   }
   
   &.has-notifications {
@@ -229,17 +253,92 @@
   animation-delay: 0.3s;
 }
 
-// Responsive
-@media (max-width: 768px) {
+// Responsive - Mobile optimizations
+@media (max-width: 480px) {
   .notifications-container {
-    right: 16px;
-    left: 16px;
+    top: calc(env(safe-area-inset-top, 10px) + 10px);
+    left: 8px;
+    right: 8px;
+    width: auto;
     max-width: none;
+    transform: none;
+  }
+  
+  .notification-popup {
+    margin-bottom: 12px;
+    border-radius: 16px; // Slightly smaller radius on mobile
+    
+    // Optimize animations for mobile
+    &.notification-enter {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    
+    &.notification-exit {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.9);
+      transition: all 0.25s ease-out;
+    }
+    
+    // Disable hover effects on touch devices
+    @media (hover: none) {
+      &:hover {
+        transform: none;
+        box-shadow: 
+          0 25px 50px rgba(0, 0, 0, 0.25),
+          0 12px 24px rgba(0, 0, 0, 0.12),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+    }
   }
   
   .notification-content {
     padding: 16px;
     gap: 12px;
+  }
+  
+  .notification-icon {
+    font-size: 20px; // Slightly smaller on mobile
+  }
+  
+  .notification-title {
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  
+  .notification-message {
+    font-size: 13px;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  
+  .notification-time {
+    font-size: 11px;
+  }
+  
+  .notification-close {
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    
+    span {
+      font-size: 16px;
+    }
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .notifications-container {
+    right: 16px;
+    left: 16px;
+    max-width: none;
+    transform: none;
+  }
+  
+  .notification-content {
+    padding: 18px;
+    gap: 14px;
   }
   
   .notification-title {

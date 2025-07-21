@@ -52,11 +52,6 @@ import { PetSelectionService } from '../services/pet-selection.service';
           </div>
           
           <div class="pet-popup-data">
-            <div class="data-row" *ngIf="lastIMUUpdate">
-              <i class="fas" [class]="getActivityIcon(lastIMUUpdate.activity)"></i>
-              <span>{{ getActivityText(lastIMUUpdate.activity) }}</span>
-            </div>
-            
             <div class="data-row" *ngIf="lastBatteryUpdate?.batteryLevel">
               <i class="fas fa-battery-three-quarters"></i>
               <span>{{ lastBatteryUpdate?.batteryLevel }}%</span>
@@ -74,7 +69,7 @@ import { PetSelectionService } from '../services/pet-selection.service';
             
             <div class="data-row">
               <i class="fas fa-clock"></i>
-              <span>{{ getTimeAgo(lastIMUUpdate?.timestamp || lastLocationUpdate?.timestamp) }}</span>
+              <span>{{ getLastUpdateTimeText() }}</span>
             </div>
           </div>
         </div>
@@ -413,6 +408,36 @@ import { PetSelectionService } from '../services/pet-selection.service';
       background: linear-gradient(135deg, rgba(255, 59, 48, 0.2), rgba(255, 69, 58, 0.2));
       border: 1px solid rgba(255, 59, 48, 0.3);
       color: #FF3B30;
+    }
+
+    .pet-status-indicator.status-resting {
+      background: linear-gradient(135deg, rgba(52, 199, 89, 0.2), rgba(48, 209, 88, 0.2));
+      border: 1px solid rgba(52, 199, 89, 0.3);
+      color: #34C759;
+    }
+
+    .pet-status-indicator.status-walking {
+      background: linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 149, 0, 0.2));
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      color: #FF9F0A;
+    }
+
+    .pet-status-indicator.status-running {
+      background: linear-gradient(135deg, rgba(255, 69, 58, 0.2), rgba(255, 59, 48, 0.2));
+      border: 1px solid rgba(255, 69, 58, 0.3);
+      color: #FF453A;
+    }
+
+    .pet-status-indicator.status-traveling {
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.2), rgba(10, 132, 255, 0.2));
+      border: 1px solid rgba(0, 122, 255, 0.3);
+      color: #007AFF;
+    }
+
+    .pet-status-indicator.status-unknown {
+      background: linear-gradient(135deg, rgba(142, 142, 147, 0.2), rgba(174, 174, 178, 0.2));
+      border: 1px solid rgba(142, 142, 147, 0.3);
+      color: #8E8E93;
     }
 
     .pet-status-indicator.status-active {
@@ -870,7 +895,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   public error: string | null = null;
   public isRealtimeConnected = false; // Estado de conexión WebSocket
   public isESP32Connected = false; // Estado específico del ESP32C6 enviando datos
-  private lastESP32DataTime: number = 0; // Timestamp de última recepción de datos del ESP32
+  public lastESP32DataTime: number = 0; // Timestamp de última recepción de datos del ESP32
   private esp32TimeoutMs = 30000; // 30 segundos de timeout para considerar desconectado
   public isProduction = false;
   
@@ -1110,7 +1135,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       // Update location and add marker with the specific animal data
       if (animal.coordinates) {
         this.petLocation = animal.coordinates;
-        this.updateLocation(animal.coordinates);
+        this.updateLocation(animal.coordinates, true); // Solo centrar en la inicialización/cambio de mascota
       }
       
       // Remove existing marker if any
@@ -1124,17 +1149,23 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   }
 
   // Update map location to new coordinates
-  public updateLocation(coordinates: [number, number]): void {
-    console.log('updateLocation called with coordinates:', coordinates);
+  public updateLocation(coordinates: [number, number], shouldCenter: boolean = false): void {
+    console.log('updateLocation called with coordinates:', coordinates, 'shouldCenter:', shouldCenter);
     if (this.map && coordinates) {
       this.petLocation = coordinates;
-      console.log('Flying to new location:', coordinates);
-      this.map.flyTo({
-        center: coordinates,
-        zoom: 15,
-        duration: 2000,
-        essential: true
-      });
+      
+      // Solo centrar si se solicita explícitamente
+      if (shouldCenter) {
+        console.log('Flying to new location:', coordinates);
+        this.map.flyTo({
+          center: coordinates,
+          zoom: 15,
+          duration: 2000,
+          essential: true
+        });
+      } else {
+        console.log('Location updated without centering - user can center manually');
+      }
     } else {
       console.warn('Map or coordinates not available:', { map: !!this.map, coordinates });
     }
@@ -1148,10 +1179,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       // Add highlight animation to marker
       this.highlightPetMarker();
       
-      // Fly to pet location with higher zoom
+      // Fly to pet location with appropriate zoom (no auto zoom out)
       this.map.flyTo({
         center: this.petLocation,
-        zoom: 18,
+        zoom: Math.max(this.map.getZoom(), 16), // Usar zoom actual si es mayor que 16
         duration: 2000,
         essential: true
       });
@@ -1733,6 +1764,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           
           // Actualizar estado de la mascota Max
           if (this.selectedPet && this.selectedPet.name === 'Max') {
+            console.log('📡 Updating Max pet status to online and activity to resting');
             this.petSelectionService.updatePetStatus(this.selectedPet.id, 'online');
             this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'resting');
           }
@@ -1815,19 +1847,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       if (this.petMarker && this.map) {
         this.petMarker.setLngLat(newCoordinates);
         
-        // Solo centrar el mapa si está muy lejos
-        const currentCenter = this.map.getCenter();
-        const distance = this.calculateDistance(
-          [currentCenter.lng, currentCenter.lat],
-          newCoordinates
-        );
-        if (distance > 0.002) {
-          this.map.flyTo({
-            center: newCoordinates,
-            duration: 1000,
-            essential: true
-          });
-        }
+        // Removido centrado automático - el usuario debe usar el botón "Centrar en mascota"
+        // Esto evita que el mapa se centre automáticamente cuando se reconecta el ESP32C6
         
         // Agregar animación sutil para indicar actualización
         this.subtleLocationUpdate();
@@ -2062,8 +2083,19 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     
     let date: Date;
     if (typeof timestamp === 'number') {
-      // Si es timestamp de millis (como el que envía el ESP32C6)
-      date = new Date(timestamp);
+      // Si el timestamp es muy pequeño (< 1e12), es probablemente millis desde boot del ESP32C6
+      // En ese caso, usar el tiempo de la última actualización recibida
+      if (timestamp < 1e12) {
+        // Para ESP32C6: usar tiempo de última recepción de datos
+        if (this.lastESP32DataTime > 0) {
+          date = new Date(this.lastESP32DataTime);
+        } else {
+          return 'Hace unos segundos';
+        }
+      } else {
+        // Timestamp Unix normal
+        date = new Date(timestamp);
+      }
     } else if (typeof timestamp === 'string') {
       date = new Date(timestamp);
     } else {
@@ -2076,7 +2108,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     const diffMinutes = Math.floor(diffSeconds / 60);
     const diffHours = Math.floor(diffMinutes / 60);
     
-    if (diffSeconds < 60) {
+    if (diffSeconds < 10) {
+      return 'Ahora';
+    } else if (diffSeconds < 60) {
       return 'Hace unos segundos';
     } else if (diffMinutes < 60) {
       return `Hace ${diffMinutes} min`;
@@ -2085,6 +2119,17 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     } else {
       const diffDays = Math.floor(diffHours / 24);
       return `Hace ${diffDays}d`;
+    }
+  }
+
+  // Función específica para el tiempo en el popup
+  public getLastUpdateTimeText(): string {
+    if (this.isESP32Connected && this.lastESP32DataTime > 0) {
+      return this.getTimeAgo(this.lastESP32DataTime);
+    } else if (this.selectedPet?.name === 'Max') {
+      return 'Sin conexión';
+    } else {
+      return 'Hace 5 min'; // Para mascotas demo
     }
   }
 
@@ -2150,27 +2195,29 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Método para obtener información del estado de la mascota
+  // Método para obtener información del estado de la mascota (solo actividad, no conexión)
   public getPetStatusInfo(pet: any): { class: string, icon: string, text: string } {
-    // Para Max: usar estado dinámico del ESP32 si está disponible
+    // Para Max: usar estado dinámico del ESP32C6 - solo actividad
     if (pet.name === 'Max') {
-      // Obtener estado actual del marcador si existe
-      if (this.petMarker) {
-        const markerElement = this.petMarker.getElement();
-        const currentState = markerElement.className.match(/state-(\w+)/)?.[1];
+      // Debug logging para diagnosticar el problema
+      console.log('🔍 Debug getPetStatusInfo para Max:', {
+        isESP32Connected: this.isESP32Connected,
+        lastIMUUpdate: this.lastIMUUpdate,
+        activity: this.lastIMUUpdate?.activity,
+        activityType: typeof this.lastIMUUpdate?.activity
+      });
+      
+      if (this.isESP32Connected && this.lastIMUUpdate?.activity) {
+        // Usar actividad real del ESP32C6
+        const activity = this.lastIMUUpdate.activity.toLowerCase().trim();
+        console.log('🎯 Actividad procesada:', activity);
         
-        switch (currentState) {
-          case 'lying':
+        switch (activity) {
+          case 'resting':
             return {
-              class: 'status-lying',
+              class: 'status-resting',
               icon: '🛌',
               text: 'Descansando'
-            };
-          case 'standing':
-            return {
-              class: 'status-standing',
-              icon: '🚶',
-              text: 'De pie'
             };
           case 'walking':
             return {
@@ -2184,20 +2231,29 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
               icon: '🏃‍♂️',
               text: 'Corriendo'
             };
-          default:
+          case 'traveling':
             return {
-              class: 'status-standing',
-              icon: '🚶',
-              text: 'De pie'
+              class: 'status-traveling',
+              icon: '🚗',
+              text: 'En transporte'
+            };
+          default:
+            console.log('⚠️ Actividad no reconocida:', activity);
+            return {
+              class: 'status-unknown',
+              icon: '❓',
+              text: 'Actividad desconocida'
             };
         }
+      } else {
+        // Sin datos del ESP32C6 - mostrar estado desconocido
+        console.log('❌ ESP32C6 no conectado o sin datos IMU');
+        return {
+          class: 'status-unknown',
+          icon: '❓',
+          text: 'Sin datos de actividad'
+        };
       }
-      // Fallback para Max si no hay marcador
-      return {
-        class: 'status-standing',
-        icon: '🚶',
-        text: 'De pie'
-      };
     }
     
     // Para mascotas demo: usar estados fijos según el activityState
@@ -2231,7 +2287,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         // En lugar de mostrar "Desconectado", mostrar "Parado" como estado por defecto
         return {
           class: 'status-standing',
-          icon: '�',
+          icon: '🚶',
           text: 'Parado'
         };
       default:
@@ -2380,12 +2436,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         this.petLocation = coords;
         this.petMarker.setLngLat(coords);
         
-        // Solo mover el centro si está lejos
-        const currentCenter = this.map.getCenter();
-        const distance = this.calculateDistance([currentCenter.lng, currentCenter.lat], coords);
-        if (distance > 0.002) {
-          this.map.flyTo({ center: coords, duration: 1000, essential: true });
-        }
+        // Removido centrado automático - el usuario debe usar el botón "Centrar en mascota"
+        // Esto evita que el mapa se centre automáticamente cuando se reciben actualizaciones
       }
     }
   }

@@ -79,11 +79,29 @@ $desktop: 1200px;  // Desktop real
   transition: all var(--transition-normal);
   // Liquid glass effect applied via class
   
+  // Mobile optimizations
   @include mobile {
-    top: 16px;
-    left: 16px;
-    right: 16px;
-    border-radius: 24px;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    border-radius: 20px;
+    
+    // iOS Safari safe area support
+    @supports (-webkit-touch-callout: none) {
+      top: calc(env(safe-area-inset-top, 12px) + 12px);
+    }
+  }
+  
+  // Extra small mobile devices
+  @media (max-width: 375px) {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    border-radius: 18px;
+    
+    @supports (-webkit-touch-callout: none) {
+      top: calc(env(safe-area-inset-top, 8px) + 8px);
+    }
   }
   
   &:hover {
@@ -91,6 +109,14 @@ $desktop: 1200px;  // Desktop real
     border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    
+    // Disable hover on touch devices
+    @media (hover: none) {
+      transform: none;
+      background: var(--liquid-glass-bg);
+      border-color: var(--liquid-glass-border);
+      box-shadow: var(--liquid-glass-shadow);
+    }
   }
   
   .header-content {
@@ -98,33 +124,34 @@ $desktop: 1200px;  // Desktop real
     justify-content: space-between;
     align-items: center;
     padding: 12px 20px;
-    width: 100%;
-    max-width: none;
-    margin: 0;
     
-    // Mobile específico (hasta 767px)
-    @media (max-width: 767px) {
-      padding: 8px 16px;
+    @include mobile {
+      padding: 10px 16px;
+      gap: 12px; // Add gap for better spacing on mobile
+      justify-content: center; // Center content on mobile
+      position: relative;
+      
+      // Position actions on the right
+      .header-actions {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      
+      // Center logo section
+      .logo-section {
+        text-align: center;
+      }
     }
     
-    // Tablet específico (768px a 1023px)
-    @media (min-width: 768px) and (max-width: 1023px) {
-      padding: 10px 18px;
-    }
-    
-    // Desktop específico (1024px a 1199px)
-    @media (min-width: 1024px) and (max-width: 1199px) {
-      padding: 14px 32px;
-    }
-    
-    // Pantallas grandes (1200px en adelante)
-    @media (min-width: 1200px) {
-      padding: 16px 48px;
-    }
-    
-    // Extra grandes (1400px en adelante)
-    @media (min-width: 1400px) {
-      padding: 18px 64px;
+    @media (max-width: 375px) {
+      padding: 8px 14px;
+      gap: 8px;
+      
+      .header-actions {
+        right: 14px;
+      }
     }
   }
   
@@ -544,10 +571,10 @@ $desktop: 1200px;  // Desktop real
   // Responsive: mejor adaptación móvil
   @include mobile {
     left: 50%;
-    bottom: 10px;
+    bottom: 12px; // Consistent with mobile optimized position
     transform: translateX(-50%);
-    width: 95vw;
-    max-width: 95vw;
+    width: calc(100vw - 24px); // Better mobile width with proper margins
+    max-width: calc(100vw - 24px);
     border-radius: 32px 32px 24px 24px;
     padding: 6px 12px 10px 12px;
     min-height: 46px;
@@ -1021,8 +1048,8 @@ $desktop: 1200px;  // Desktop real
     left: 50%;
     bottom: 12px;
     transform: translateX(-50%) translateY(0);
-    width: 94vw;
-    max-width: 94vw;
+    width: calc(100vw - 24px); // Consistent mobile width
+    max-width: calc(100vw - 24px);
     border-radius: 32px 32px 24px 24px;
     padding: 6px 12px 10px 12px;
     min-height: 46px;

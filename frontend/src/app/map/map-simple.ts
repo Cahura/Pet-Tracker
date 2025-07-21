@@ -37,21 +37,6 @@ import { NotificationService } from '../notification/notification';
       
       <div *ngIf="error" class="error">Error: {{ error }}</div>
       
-      <!-- Controles de ruta -->
-      <div class="route-controls" *ngIf="!isLoading">
-        <button class="route-btn" (click)="showRouteHistory()" title="Mostrar historial de rutas">
-          <i class="fas fa-route"></i>
-          <span>Rutas</span>
-        </button>
-        <button class="route-btn" (click)="clearCurrentRoute()" title="Limpiar ruta actual">
-          <i class="fas fa-trash"></i>
-          <span>Limpiar</span>
-        </button>
-        <div class="route-info" *ngIf="routeHistory.length > 0">
-          <span>{{ routeHistory.length }} rutas guardadas</span>
-        </div>
-      </div>
-      
       <!-- Popup minimalista para información de la mascota -->
       <div *ngIf="showPetPopup" class="pet-popup" [style.left.px]="popupPosition.x" [style.top.px]="popupPosition.y"
            (mouseenter)="onPopupMouseEnter()" (mouseleave)="onPopupMouseLeave()">
@@ -899,85 +884,6 @@ import { NotificationService } from '../notification/notification';
         transform: scale(1.02);
       }
     }
-
-    /* Controles de ruta */
-    .route-controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: var(--liquid-glass-bg);
-      backdrop-filter: blur(var(--liquid-glass-blur));
-      border: 1px solid var(--liquid-glass-border);
-      border-radius: var(--border-radius-lg);
-      padding: 16px;
-      box-shadow: var(--liquid-glass-shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      z-index: 1000;
-      min-width: 120px;
-    }
-
-    .route-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: var(--border-radius-md);
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      white-space: nowrap;
-    }
-
-    .route-btn:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .route-btn:active {
-      transform: translateY(0);
-    }
-
-    .route-btn i {
-      font-size: 16px;
-    }
-
-    .route-info {
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-align: center;
-      padding: 4px 0;
-      border-top: 1px solid var(--border-color);
-    }
-
-    /* Responsivo para móviles */
-    @media (max-width: 768px) {
-      .route-controls {
-        top: 10px;
-        right: 10px;
-        padding: 12px;
-        min-width: 100px;
-      }
-
-      .route-btn {
-        padding: 8px 12px;
-        font-size: 13px;
-      }
-
-      .route-btn span {
-        display: none;
-      }
-
-      .route-btn i {
-        font-size: 18px;
-      }
-    }
   `],
   standalone: true,
   imports: [CommonModule]
@@ -998,6 +904,11 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   public lastESP32DataTime: number = 0; // Timestamp de última recepción de datos del ESP32
   private esp32TimeoutMs = 30000; // 30 segundos de timeout para considerar desconectado
   public isProduction = false;
+  
+  // Variables de optimización de renderizado
+  private lastRenderTime: number = 0;
+  private lastLogTime: number = 0;
+  private pendingData: PetData | null = null;
   
   // Datos en tiempo real optimizados
   public lastLocationUpdate: any = null;
@@ -1883,37 +1794,54 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         }
         
         // Actualizar timestamp de última recepción de datos del ESP32
-        this.lastESP32DataTime = Date.now();
+        const now = Date.now();
+        this.lastESP32DataTime = now;
         
-        // Marcar ESP32 como conectado ya que está enviando datos
+        // Throttling: Limitar actualizaciones de UI cada 3 segundos
+        if (this.lastRenderTime && (now - this.lastRenderTime) < 3000) {
+          // Solo guardar los últimos datos, no renderizar aún
+          this.pendingData = data;
+          return;
+        }
+        this.lastRenderTime = now;
+        
+        // Usar datos pendientes si existen (los más recientes)
+        const dataToProcess = this.pendingData || data;
+        this.pendingData = null;
+        
+        // Marcar ESP32 como conectado ya que está enviando datos (solo una vez)
         if (!this.isESP32Connected) {
           this.isESP32Connected = true;
-          console.log('🟢 ESP32C6 started sending data - marking as connected');
+          console.log('🟢 ESP32C6 conectado y enviando datos');
           
           // Mostrar notificación de conexión
           this.notificationService.showConnectionActive('Max');
           
           // Actualizar estado de la mascota Max
           if (this.selectedPet && this.selectedPet.name === 'Max') {
-            console.log('📡 Updating Max pet status to online and activity to resting');
             this.petSelectionService.updatePetStatus(this.selectedPet.id, 'online');
             this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'resting');
           }
         }
         
-        // Actualizar ubicación directamente desde los datos GPS del ESP32C6
-        if (data.gps_valid && data.latitude && data.longitude) {
-          this.lastLocationUpdate = {
-            petId: data.petId.toString(),
-            latitude: data.latitude,      // ✅ Usar latitude directamente
-            longitude: data.longitude,    // ✅ Usar longitude directamente
-            timestamp: data.timestamp,
-            gps_valid: data.gps_valid
+        // Actualizar ubicación solo si GPS es válido y ha cambiado
+        if (dataToProcess.gps_valid && dataToProcess.latitude && dataToProcess.longitude) {
+          const newLocation = {
+            petId: dataToProcess.petId.toString(),
+            latitude: dataToProcess.latitude,
+            longitude: dataToProcess.longitude,
+            timestamp: dataToProcess.timestamp,
+            gps_valid: dataToProcess.gps_valid
           };
-          console.log('📍 Ubicación actualizada desde ESP32C6:', this.lastLocationUpdate);
-          this.updatePetLocation(this.lastLocationUpdate);
-        } else {
-          console.log('❌ Sin GPS válido desde ESP32C6, no se actualiza ubicación');
+          
+          // Solo actualizar si es significativamente diferente
+          if (!this.lastLocationUpdate || 
+              Math.abs(this.lastLocationUpdate.latitude - newLocation.latitude) > 0.00001 ||
+              Math.abs(this.lastLocationUpdate.longitude - newLocation.longitude) > 0.00001) {
+            
+            this.lastLocationUpdate = newLocation;
+            this.updatePetLocation(this.lastLocationUpdate);
+          }
         }
         
         // Actualizar IMU
@@ -2023,27 +1951,23 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       const distance = this.calculateDistance(this.petLocation, coordinates);
       const distanceMeters = distance * 111000;
       
-      // Solo actualizar si hay cambio significativo (más de 5 metros)
-      if (distanceMeters < 5) {
-        console.log(`📏 Cambio menor a 5m (${distanceMeters.toFixed(1)}m) - no actualizar`);
-        return;
+      // Solo actualizar si hay cambio significativo (más de 10 metros)
+      if (distanceMeters < 10) {
+        return; // Silencioso, sin logging excesivo
       }
-      
-      console.log(`📏 Distancia desde última ubicación: ${distanceMeters.toFixed(2)} metros`);
     }
     
     // Actualizar ubicación almacenada
     this.petLocation = coordinates;
     
-    // Actualizar en el servicio de mascotas
+    // Actualizar en el servicio de mascotas (solo una vez)
     this.petSelectionService.updatePetLocation(1, coordinates);
     
     // Actualizar marcador en el mapa SIN centrar automáticamente
     if (this.petMarker && this.map) {
-      console.log('🗺️ Actualizando marcador en el mapa a:', coordinates);
       this.petMarker.setLngLat(coordinates);
       
-      // Solo centrar si se solicita explícitamente (ej: botón "Mi Ubicación")
+      // Solo centrar si se solicita explícitamente
       if (shouldCenter) {
         this.map.flyTo({
           center: coordinates,
@@ -2052,9 +1976,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         });
       }
       
-      // Animación sutil para indicar actualización
-      this.subtleLocationUpdate();
-      this.cdr.detectChanges();
+      // Reducir llamadas a detectChanges - solo cuando sea realmente necesario
+      if (shouldCenter || !this.lastLocationUpdate) {
+        this.cdr.detectChanges();
+      }
       
     } else if (this.map && !this.petMarker) {
       // Crear marcador si no existe

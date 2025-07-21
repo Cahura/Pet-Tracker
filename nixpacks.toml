@@ -5,13 +5,5 @@ NODE_VERSION = "24.0.0"
 NODE_ENV = "production"
 PORT = "3000"
 
-[phases.build]
-cmds = [
-    "echo 'Building Pet Tracker for Railway...'",
-    "npm install",
-    "npm run railway:build",
-    "echo 'Build completed successfully!'"
-]
-
 [start]
 cmd = "npm run railway:start"

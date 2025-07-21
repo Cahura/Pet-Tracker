@@ -60,23 +60,7 @@ import { NotificationService } from '../notification/notification';
             
             <div class="data-row" *ngIf="lastBatteryUpdate?.signalStrength">
               <i class="fas fa-signal"></i>
-              <span>{{ lastBatteryUpdate?.signalStrength }}%</span>
-            </div>
-            
-            <!-- Datos mejorados del ESP32C6 -->
-            <div class="data-row" *ngIf="lastIMUUpdate?.activity_confidence">
-              <i class="fas fa-chart-line"></i>
-              <span>Confianza: {{ (lastIMUUpdate.activity_confidence * 100) | number:'1.0-0' }}%</span>
-            </div>
-            
-            <div class="data-row" *ngIf="lastIMUUpdate?.movement_intensity !== undefined">
-              <i class="fas fa-tachometer-alt"></i>
-              <span>Intensidad: {{ lastIMUUpdate.movement_intensity }}%</span>
-            </div>
-            
-            <div class="data-row" *ngIf="lastIMUUpdate?.posture">
-              <i class="fas fa-arrows-alt"></i>
-              <span>Postura: {{ getPostureText(lastIMUUpdate.posture) }}</span>
+              <span>Señal: {{ lastBatteryUpdate?.signalStrength }}%</span>
             </div>
             
             <div class="data-row" *ngIf="lastIMUUpdate?.gps_speed_kmh !== undefined && lastIMUUpdate.gps_speed_kmh > 0">
@@ -86,7 +70,7 @@ import { NotificationService } from '../notification/notification';
             
             <div class="data-row">
               <i class="fas fa-map-marker-alt"></i>
-              <span>{{ selectedPet?.location || 'Lima, Perú' }}</span>
+              <span>{{ getLocationName() }}</span>
             </div>
             
             <div class="data-row">
@@ -933,8 +917,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private popupTimeout: any = null;
   private isPopupHovered = false;
   
-  // Ubicación actual de la mascota (se actualiza según la mascota seleccionada)
-  private petLocation: [number, number] = [-77.0428, -12.0464]; // Centro de Lima como default
+  // Ubicación actual de la mascota (UPC Monterrico por defecto cuando ESP32C6 desconectado)
+  private petLocation: [number, number] = [-76.9717, -12.0635]; // UPC Sede Monterrico
   private currentPetData: any = null;
 
   constructor(
@@ -1212,15 +1196,15 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Method to center map on pet location with highlight animation
+  // Method to center map on pet location with highlight animation (manual centering)
   public centerOnPet(): void {
     if (this.map && this.petLocation) {
-      console.log('Centering on pet with highlight animation');
+      console.log('🎯 Centrando manualmente en la mascota con animación');
       
       // Add highlight animation to marker
       this.highlightPetMarker();
       
-      // Fly to pet location with appropriate zoom (no auto zoom out)
+      // Fly to pet location with appropriate zoom
       this.map.flyTo({
         center: this.petLocation,
         zoom: Math.max(this.map.getZoom(), 16), // Usar zoom actual si es mayor que 16
@@ -1895,52 +1879,29 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private updatePetLocation(locationData: any): void {
     console.log('🔍 updatePetLocation llamado con:', locationData);
     
-    // Solo actualizar ubicación si es Max (petId: 1) y tiene GPS válido
+    // Solo actualizar ubicación si es Max (petId: 1) - NO requerir GPS válido cuando ESP32 conectado
     if (this.currentPetData && this.currentPetData.name === 'Max' && locationData.petId === '1') {
       
-      // Usar coordenadas del ESP32 solo si son GPS válido
-      if (locationData.gps_valid && locationData.longitude && locationData.latitude && 
+      // Si ESP32C6 está conectado, usar coordenadas recibidas (incluso sin GPS válido)
+      if (this.isESP32Connected && locationData.longitude && locationData.latitude && 
           locationData.longitude !== 0 && locationData.latitude !== 0) {
         const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
-        console.log('✅ Actualizando ubicación de Max con GPS válido del ESP32C6:', newCoordinates);
-        console.log(`🔍 DEBUGGING COORDENADAS DEL MAPA:`);
-        console.log(`   Recibido - lat: ${locationData.latitude}, lng: ${locationData.longitude}`);
-        console.log(`   Mapbox format - [lng, lat]: [${newCoordinates[0]}, ${newCoordinates[1]}]`);
-        console.log(`   Verificar ubicación: https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}`);
+        console.log('✅ ESP32C6 conectado: actualizando con coordenadas recibidas:', newCoordinates);
         
-        // Verificar si la ubicación ha cambiado significativamente
-        if (this.petLocation) {
-          const distance = this.calculateDistance(this.petLocation, newCoordinates);
-          console.log(`📏 Distancia desde última ubicación: ${(distance * 111000).toFixed(2)} metros`);
-        }
+        this.updatePetMarkerPosition(newCoordinates, false); // NO centrar automáticamente
         
-        // Actualizar ubicación almacenada
-        this.petLocation = newCoordinates;
+      } else if (locationData.gps_valid && locationData.longitude && locationData.latitude && 
+          locationData.longitude !== 0 && locationData.latitude !== 0) {
+        const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
+        console.log('✅ GPS válido: actualizando ubicación de Max:', newCoordinates);
         
-        // Actualizar en el servicio de mascotas
-        this.petSelectionService.updatePetLocation(1, newCoordinates);
-        
-        // Actualizar marcador en el mapa
-        if (this.petMarker && this.map) {
-          console.log('🗺️ Actualizando marcador en el mapa a:', newCoordinates);
-          this.petMarker.setLngLat(newCoordinates);
-          
-          // Agregar animación sutil para indicar actualización
-          this.subtleLocationUpdate();
-          
-          // Trigger change detection para asegurar que Angular actualice la vista
-          this.cdr.detectChanges();
-        } else if (this.map && !this.petMarker) {
-          // Crear marcador si no existe
-          this.updatePetMarker(newCoordinates);
-        }
+        this.updatePetMarkerPosition(newCoordinates, false); // NO centrar automáticamente
         
       } else {
-        console.log('❌ GPS inválido para Max - no se actualiza ubicación en mapa');
-        console.log(`   Coordenadas: lat=${locationData.latitude}, lng=${locationData.longitude}`);
-        
-        // No remover marcador, solo no actualizar posición
-        // El marcador permanece en la última posición GPS válida conocida
+        console.log('❌ ESP32C6 desconectado o coordenadas inválidas - usando ubicación UPC Monterrico');
+        // Ubicación fija: UPC Sede Monterrico
+        const upcCoordinates: [number, number] = [-76.9717, -12.0635]; 
+        this.updatePetMarkerPosition(upcCoordinates, false);
       }
     } else {
       console.log('🚫 updatePetLocation ignorado:', {
@@ -1949,6 +1910,52 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         isMax: this.currentPetData?.name === 'Max',
         isCorrectId: locationData.petId === '1'
       });
+    }
+  }
+
+  // Nueva función separada para actualizar posición del marcador sin centrar
+  private updatePetMarkerPosition(coordinates: [number, number], shouldCenter: boolean = false): void {
+    // Verificar si la ubicación ha cambiado significativamente para evitar updates innecesarios
+    if (this.petLocation) {
+      const distance = this.calculateDistance(this.petLocation, coordinates);
+      const distanceMeters = distance * 111000;
+      
+      // Solo actualizar si hay cambio significativo (más de 5 metros)
+      if (distanceMeters < 5) {
+        console.log(`📏 Cambio menor a 5m (${distanceMeters.toFixed(1)}m) - no actualizar`);
+        return;
+      }
+      
+      console.log(`📏 Distancia desde última ubicación: ${distanceMeters.toFixed(2)} metros`);
+    }
+    
+    // Actualizar ubicación almacenada
+    this.petLocation = coordinates;
+    
+    // Actualizar en el servicio de mascotas
+    this.petSelectionService.updatePetLocation(1, coordinates);
+    
+    // Actualizar marcador en el mapa SIN centrar automáticamente
+    if (this.petMarker && this.map) {
+      console.log('🗺️ Actualizando marcador en el mapa a:', coordinates);
+      this.petMarker.setLngLat(coordinates);
+      
+      // Solo centrar si se solicita explícitamente (ej: botón "Mi Ubicación")
+      if (shouldCenter) {
+        this.map.flyTo({
+          center: coordinates,
+          zoom: Math.max(this.map.getZoom(), 16),
+          duration: 1000
+        });
+      }
+      
+      // Animación sutil para indicar actualización
+      this.subtleLocationUpdate();
+      this.cdr.detectChanges();
+      
+    } else if (this.map && !this.petMarker) {
+      // Crear marcador si no existe
+      this.updatePetMarker(coordinates);
     }
   }
 
@@ -2572,5 +2579,36 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         // Esto evita que el mapa se centre automáticamente cuando se reciben actualizaciones
       }
     }
+  }
+
+  // Función para obtener nombre del lugar estilo Apple (sin coordenadas)
+  public getLocationName(): string {
+    if (!this.isESP32Connected) {
+      return 'UPC Sede Monterrico, Lima';
+    }
+    
+    // Cuando está conectado, mostrar área general sin coordenadas específicas
+    if (this.petLocation) {
+      const [lng, lat] = this.petLocation;
+      
+      // Detectar área general de Lima basada en coordenadas
+      if (lat > -12.2 && lat < -11.8 && lng > -77.2 && lng < -76.8) {
+        if (lat > -12.1 && lng < -77.0) {
+          return 'Miraflores, Lima';
+        } else if (lat > -12.15 && lng < -76.98) {
+          return 'San Isidro, Lima';
+        } else if (lat > -12.08 && lng < -76.97) {
+          return 'Surco, Lima';
+        } else if (lat > -12.18 && lng < -77.03) {
+          return 'Barranco, Lima';
+        } else {
+          return 'Lima, Perú';
+        }
+      }
+      
+      return 'Ubicación desconocida';
+    }
+    
+    return 'Sin ubicación';
   }
 }

@@ -98,24 +98,30 @@ export class WebSocketService {
       const parsedData = JSON.parse(data);
       console.log('📨 Datos recibidos del WebSocket:', parsedData);
       
-      // Normalizar datos: convertir latitude/longitude a coordinates si es necesario
+      // Normalizar datos: convertir latitude/longitude a coordinates para Mapbox
       if (parsedData.latitude !== undefined && parsedData.longitude !== undefined) {
-        console.log(`🔍 DEBUGGING COORDENADAS RECIBIDAS:`);
+        console.log(`🔍 COORDENADAS RECIBIDAS:`);
         console.log(`   latitude: ${parsedData.latitude}`);
         console.log(`   longitude: ${parsedData.longitude}`);
         console.log(`   gps_valid: ${parsedData.gps_valid}`);
         
-        // Solo crear coordenadas si son válidas (no null, no 0,0)
-        if (parsedData.latitude !== null && parsedData.longitude !== null && 
-            parsedData.latitude !== 0 && parsedData.longitude !== 0) {
+        // Validar coordenadas GPS (más permisivo para debugging)
+        if (parsedData.gps_valid && 
+            parsedData.latitude !== null && parsedData.longitude !== null && 
+            parsedData.latitude !== 0 && parsedData.longitude !== 0 &&
+            Math.abs(parsedData.latitude) <= 90 && Math.abs(parsedData.longitude) <= 180) {
+          
+          // Mapbox usa formato [longitude, latitude] 
           parsedData.coordinates = [parsedData.longitude, parsedData.latitude];
-          console.log(`📍 Coordenadas GPS válidas para petId ${parsedData.petId}: [lng: ${parsedData.longitude}, lat: ${parsedData.latitude}]`);
-          console.log(`🌍 Verificar en Google Maps: https://www.google.com/maps?q=${parsedData.latitude},${parsedData.longitude}`);
+          console.log(`✅ Coordenadas válidas para Mapbox: [${parsedData.longitude}, ${parsedData.latitude}]`);
+          console.log(`🌍 Verificar ubicación: https://www.google.com/maps?q=${parsedData.latitude},${parsedData.longitude}`);
         } else {
-          // Coordenadas inválidas - no actualizar ubicación
           parsedData.coordinates = null;
-          console.log(`❌ Coordenadas GPS inválidas para petId ${parsedData.petId}: lat=${parsedData.latitude}, lng=${parsedData.longitude}`);
+          console.warn(`❌ Coordenadas rechazadas: lat=${parsedData.latitude}, lng=${parsedData.longitude}, gps_valid=${parsedData.gps_valid}`);
         }
+      } else {
+        parsedData.coordinates = null;
+        console.log('ℹ️ Sin coordenadas GPS en este mensaje');
       }
 
       // Validar que tiene los campos requeridos

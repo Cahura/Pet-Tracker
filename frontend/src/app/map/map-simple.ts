@@ -1796,14 +1796,20 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           }
         }
         
-        // Actualizar ubicación
-        this.lastLocationUpdate = {
-          petId: data.petId.toString(),
-          latitude: data.coordinates[1],
-          longitude: data.coordinates[0],
-          timestamp: data.timestamp
-        };
-        this.updatePetLocation(this.lastLocationUpdate);
+        // Actualizar ubicación directamente desde los datos GPS del ESP32C6
+        if (data.gps_valid && data.latitude && data.longitude) {
+          this.lastLocationUpdate = {
+            petId: data.petId.toString(),
+            latitude: data.latitude,      // ✅ Usar latitude directamente
+            longitude: data.longitude,    // ✅ Usar longitude directamente
+            timestamp: data.timestamp,
+            gps_valid: data.gps_valid
+          };
+          console.log('📍 Ubicación actualizada desde ESP32C6:', this.lastLocationUpdate);
+          this.updatePetLocation(this.lastLocationUpdate);
+        } else {
+          console.log('❌ Sin GPS válido desde ESP32C6, no se actualiza ubicación');
+        }
         
         // Actualizar IMU
         this.lastIMUUpdate = {

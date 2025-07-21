@@ -5,6 +5,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <TinyGPSPlus.h>
+#include "config.h"  // Archivo de configuración separado
 
 // ============================================================================
 // CONFIGURACIÓN DE HARDWARE
@@ -20,17 +21,17 @@
 #define GPS_BAUDRATE 9600
 
 // ============================================================================
-// CONFIGURACIÓN DE RED
+// CONFIGURACIÓN DE RED (desde config.h)
 // ============================================================================
 
-// WiFi (CAMBIAR POR TUS CREDENCIALES REALES)
-const char* ssid = "TU_RED_WIFI_REAL";           // ⚠️ CAMBIAR POR TU RED WIFI
-const char* password = "TU_PASSWORD_WIFI_REAL";  // ⚠️ CAMBIAR POR TU PASSWORD
+// WiFi credentials se cargan desde config.h
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 
-// WebSocket para Railway
-const char* ws_host = "pet-tracker-production.up.railway.app";
-const int ws_port = 443;
-const char* ws_path = "/ws";
+// WebSocket para Railway (desde config.h)
+const char* ws_host = WS_HOST;
+const int ws_port = WS_PORT;
+const char* ws_path = WS_PATH;
 
 // ============================================================================
 // OBJETOS GLOBALES
@@ -43,12 +44,12 @@ HardwareSerial SerialGPS(1);
 DynamicJsonDocument jsonDoc(1536); // Reducido de 2048 a 1536
 
 // ============================================================================
-// CONFIGURACIÓN DE TIMING
+// CONFIGURACIÓN DE TIMING (desde config.h)
 // ============================================================================
 
-const unsigned long SEND_INTERVAL = 8000;        // Enviar datos cada 8s
-const unsigned long GPS_DEBUG_INTERVAL = 15000;  // Debug GPS cada 15s
-const unsigned long RECONNECT_INTERVAL = 30000;  // Reconexión cada 30s
+const unsigned long SEND_INTERVAL = ::SEND_INTERVAL;
+const unsigned long GPS_DEBUG_INTERVAL = ::GPS_DEBUG_INTERVAL;
+const unsigned long RECONNECT_INTERVAL = ::RECONNECT_INTERVAL;
 
 unsigned long lastSend = 0;
 unsigned long lastGPSDebug = 0;
@@ -408,16 +409,16 @@ String analyzePosture(float accelX, float accelY, float accelZ) {
 void sendPetData() {
   jsonDoc.clear();
   
-  // Datos básicos
-  jsonDoc["petId"] = 1;
-  jsonDoc["deviceId"] = "ESP32C6_OPTIMIZED";
+  // Datos básicos (usando config.h)
+  jsonDoc["petId"] = PET_ID;
+  jsonDoc["deviceId"] = DEVICE_ID;
   jsonDoc["timestamp"] = millis();
   jsonDoc["battery"] = calculateBatteryLevel();
   jsonDoc["connectionStatus"] = "connected";
   jsonDoc["deviceActive"] = true; // Agregar este campo que el backend puede necesitar
   
   // Datos GPS
-  bool gpsValid = gps.location.isValid() && gps.location.age() < 15000; // Aumentado a 15 segundos
+  bool gpsValid = gps.location.isValid() && gps.location.age() < GPS_TIMEOUT;
   
   if (gpsValid) {
     float lat = gps.location.lat();

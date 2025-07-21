@@ -4,10 +4,10 @@ nodejs = {}
 [variables]
 NODE_VERSION = "20.19.0"
 NODE_ENV = "production"
+PORT = "3000"
 
 [build]
 cmds = [
-    "npm install",
     "npm run railway:build"
 ]
 
@@ -16,9 +16,8 @@ cmd = "npm run railway:start"
 
 [phases.build]
 cmds = [
-    "echo 'Building Pet Tracker...'",
-    "npm run install-frontend",
-    "npm run build-frontend", 
-    "npm run install-backend",
+    "echo 'Building Pet Tracker for Railway...'",
+    "cd frontend && npm ci",
+    "cd frontend && npm run build:prod", 
     "echo 'Build completed successfully!'"
 ]

@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "description": "Pet Tracker - ESP32C6 GPS/IMU tracking via Railway WebSocket",
   "scripts": {
-    "start": "cd frontend && npm run start:prod",
-    "build": "cd frontend && npm run build:prod",
-    "install-deps": "cd frontend && npm install",
-    "railway:build": "npm run install-deps && npm run build",
+    "build": "cd frontend && npm install && npm run build",
+    "start": "npx serve frontend/dist/pet-tracker/browser -l $PORT",
     "railway:start": "npm start"
   },
   "engines": {
@@ -27,5 +25,8 @@
     "url": "https://github.com/Cahura/pet-tracker.git"
   },
   "author": "Cahura",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
 }

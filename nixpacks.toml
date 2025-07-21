@@ -1,9 +1,2 @@
-providers = ["node"]
-
 [variables]
 NODE_VERSION = "24.0.0"
-NODE_ENV = "production"
-PORT = "3000"
-
-[start]
-cmd = "npm run railway:start"

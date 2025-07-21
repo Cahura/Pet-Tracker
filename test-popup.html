@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Popup Pet Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: white;
+            padding: 20px;
+        }
+        .test-marker {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 50px auto;
+            position: relative;
+        }
+        .pet-popup {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            min-width: 200px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .pet-popup.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .status {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            background: rgba(0, 122, 255, 0.2);
+            border: 1px solid rgba(0, 122, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>🐾 Test Popup Funcionalidad</h1>
+    
+    <div class="status">
+        <h3>Estado de la página principal:</h3>
+        <p id="mainPageStatus">Verificando...</p>
+        <button onclick="checkMainPage()">🔄 Verificar Página Principal</button>
+    </div>
+
+    <div class="status">
+        <h3>Test Popup Local:</h3>
+        <p>Pasa el mouse sobre el marcador naranja:</p>
+        
+        <div class="test-marker" id="testMarker">
+            🐕
+            <div class="pet-popup" id="testPopup">
+                <h4>Max - Golden Retriever</h4>
+                <p>Estado: Conectado</p>
+                <p>Batería: 85%</p>
+                <p>Actividad: Caminando</p>
+            </div>
+        </div>
+        
+        <p id="testResult">Pasa el mouse sobre el marcador...</p>
+    </div>
+
+    <script>
+        const marker = document.getElementById('testMarker');
+        const popup = document.getElementById('testPopup');
+        const result = document.getElementById('testResult');
+        
+        marker.addEventListener('mouseenter', () => {
+            popup.classList.add('show');
+            result.textContent = '✅ Popup funcionando correctamente!';
+            result.style.color = '#34C759';
+        });
+        
+        marker.addEventListener('mouseleave', () => {
+            popup.classList.remove('show');
+            result.textContent = 'Popup oculto';
+            result.style.color = '#FF9500';
+        });
+
+        function checkMainPage() {
+            const status = document.getElementById('mainPageStatus');
+            const mainUrl = window.location.origin;
+            
+            status.innerHTML = `
+                <strong>URL Principal:</strong> <a href="${mainUrl}" target="_blank" style="color: #007AFF;">${mainUrl}</a><br>
+                <strong>WebSocket Debug:</strong> <a href="${mainUrl}/debug-websocket.html" target="_blank" style="color: #34C759;">Debug WebSocket</a><br>
+                <strong>Estado:</strong> Abre las páginas en las pestañas de arriba para verificar que funcionan
+            `;
+        }
+
+        // Auto check on load
+        setTimeout(checkMainPage, 1000);
+    </script>
+</body>
+</html>

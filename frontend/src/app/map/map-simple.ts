@@ -1088,29 +1088,47 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     
     console.log('Marker HTML created with icon:', petIcon);
 
-    // Add hover events to marker with proper debouncing
+    // Add hover events to marker with improved debugging
     markerElement.addEventListener('mouseenter', (event) => {
-      console.log('Pet marker hover enter!', animal.name);
+      console.log('🎯 HOVER DETECTED! Pet marker hover enter:', animal.name);
+      console.log('🔍 Event details:', event);
       
       // Clear any pending close timeout
       if (this.popupTimeout) {
         clearTimeout(this.popupTimeout);
         this.popupTimeout = null;
+        console.log('✅ Cleared pending timeout');
       }
       
       this.selectedPet = animal;
+      console.log('✅ Selected pet set to:', this.selectedPet);
+      
+      // Force immediate popup show for testing
+      this.showPetPopup = true;
+      this.popupPosition = {
+        x: event.clientX,
+        y: event.clientY - 100
+      };
+      
+      console.log('✅ Popup activated at position:', this.popupPosition);
+      this.cdr.detectChanges();
+      
+      // Also call the original method
       this.showPetPopupAtMarker(event);
     });
 
-    markerElement.addEventListener('mouseleave', () => {
-      console.log('Pet marker hover leave!', animal.name);
+    markerElement.addEventListener('mouseleave', (event) => {
+      console.log('🎯 HOVER END! Pet marker hover leave:', animal.name);
       
       // Don't close immediately, wait a bit to see if user moves to popup
       this.popupTimeout = setTimeout(() => {
         if (!this.isPopupHovered) {
+          console.log('⏰ Closing popup after timeout');
           this.closePetPopup();
+        } else {
+          console.log('⏸️ Popup still hovered, keeping open');
         }
-      }, 200);
+      }, 300); // Increased timeout for easier testing
     });
 
     // Create and add marker to map

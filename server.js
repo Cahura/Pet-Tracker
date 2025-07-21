@@ -40,17 +40,41 @@ wss.on('connection', (ws, req) => {
       const message = JSON.parse(data.toString());
       console.log('📨 Mensaje recibido del ESP32C6:', message);
       
-      // Reenviar a todos los clientes conectados (frontend)
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(data.toString());
+      // Manejar diferentes tipos de mensajes
+      if (message.type === 'route_data') {
+        console.log('📍 Datos de ruta recibidos del ESP32C6:');
+        console.log(`   - Puntos: ${message.pointCount}`);
+        console.log(`   - Pet ID: ${message.petId}`);
+        
+        // Reenviar datos de ruta a todos los frontends
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(data.toString());
+          }
+        });
+        
+      } else {
+        // Datos normales de ubicación/IMU
+        // Reenviar a todos los clientes conectados (frontend)
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(data.toString());
+          }
+        });
+        
+        // Log detallado para debugging
+        if (message.latitude && message.longitude) {
+          console.log(`📍 GPS: ${message.latitude}, ${message.longitude}`);
+          console.log(`🌍 Ubicación: https://www.google.com/maps?q=${message.latitude},${message.longitude}`);
+          
+          // Log información de movimiento si está disponible
+          if (message.gps_speed_kmh) {
+            console.log(`🏃 Velocidad: ${message.gps_speed_kmh} km/h`);
+          }
+          if (message.activity) {
+            console.log(`🎯 Actividad: ${message.activity}`);
+          }
         }
-      });
-      
-      // Log detallado para debugging
-      if (message.latitude && message.longitude) {
-        console.log(`📍 GPS: ${message.latitude}, ${message.longitude}`);
-        console.log(`🌍 Ubicación: https://www.google.com/maps?q=${message.latitude},${message.longitude}`);
       }
       
     } catch (error) {

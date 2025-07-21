@@ -51,9 +51,15 @@ const unsigned long SEND_INTERVAL = ::SEND_INTERVAL;
 const unsigned long GPS_DEBUG_INTERVAL = ::GPS_DEBUG_INTERVAL;
 const unsigned long RECONNECT_INTERVAL = ::RECONNECT_INTERVAL;
 
+// Intervalos inteligentes según actividad
+const unsigned long INTERVAL_STATIONARY = 30000;    // 30 segundos si está quieto
+const unsigned long INTERVAL_MOVING = 5000;         // 5 segundos si se mueve
+const unsigned long INTERVAL_FAST_MOVING = 2000;    // 2 segundos si se mueve rápido
+
 unsigned long lastSend = 0;
 unsigned long lastGPSDebug = 0;
 unsigned long lastReconnect = 0;
+unsigned long currentSendInterval = INTERVAL_STATIONARY;
 
 // ============================================================================
 // ESTADOS DEL SISTEMA
@@ -69,11 +75,36 @@ bool gpsReady = false;
 // ANÁLISIS DE ACTIVIDAD
 // ============================================================================
 
+// ============================================================================
+// ANÁLISIS DE ACTIVIDAD Y MOVIMIENTO
+// ============================================================================
+
 // Variables de posición GPS
 float previousLat = 0.0;
 float previousLng = 0.0;
 unsigned long lastGPSTime = 0;
 float currentSpeed = 0.0;
+
+// Variables de movimiento y zona segura
+bool isInSafeZone = false;
+bool isMoving = false;
+float stationaryThreshold = 10.0;  // metros
+float movingThreshold = 1.0;       // m/s
+float fastMovingThreshold = 3.0;   // m/s
+
+// Buffer para análisis de trayectoria
+struct TrackPoint {
+  float lat;
+  float lng;
+  unsigned long timestamp;
+  float speed;
+  String activity;
+};
+
+const int MAX_TRACK_POINTS = 50;
+TrackPoint routeBuffer[MAX_TRACK_POINTS];
+int routeBufferIndex = 0;
+bool isRecordingRoute = false;
 
 // Variables IMU
 const int MAX_SAMPLES = 8; // Reducido de 10 a 8
@@ -124,14 +155,16 @@ void loop() {
   // Procesar datos GPS
   processGPSData();
   
-  // Enviar datos si es momento o si hay nueva ubicación GPS
-  bool forceGPSUpdate = false;
-  if (gps.location.isUpdated() && gps.location.isValid()) {
-    forceGPSUpdate = true;
-    Serial.println("🚀 FORZANDO ENVÍO - Nueva ubicación GPS detectada");
+  // Procesar datos IMU para análisis de movimiento
+  if (mpuInitialized) {
+    processIMUData();
   }
   
-  if (millis() - lastSend >= SEND_INTERVAL || forceGPSUpdate) {
+  // Determinar estado de movimiento y ajustar intervalo
+  analyzeMovementAndAdjustInterval();
+  
+  // Enviar datos según el intervalo inteligente
+  if (millis() - lastSend >= currentSendInterval) {
     if (wifiConnected && wsConnected) {
       sendPetData();
       lastSend = millis();
@@ -327,6 +360,145 @@ void debugGPSStatus() {
   Serial.printf("   🔗 GPS Ready: %s\n", gpsReady ? "SÍ" : "NO");
   Serial.printf("   📊 Caracteres procesados desde último debug\n");
   Serial.println("=====================================");
+}
+
+// ============================================================================
+// ANÁLISIS INTELIGENTE DE MOVIMIENTO
+// ============================================================================
+
+void processIMUData() {
+  sensors_event_t accelEvent, gyroEvent, tempEvent;
+  mpu.getEvent(&accelEvent, &gyroEvent, &tempEvent);
+  
+  // Calcular magnitudes
+  float accelMag = sqrt(accelEvent.acceleration.x * accelEvent.acceleration.x + 
+                       accelEvent.acceleration.y * accelEvent.acceleration.y + 
+                       accelEvent.acceleration.z * accelEvent.acceleration.z);
+  
+  float gyroMag = sqrt(gyroEvent.gyro.x * gyroEvent.gyro.x + 
+                      gyroEvent.gyro.y * gyroEvent.gyro.y + 
+                      gyroEvent.gyro.z * gyroEvent.gyro.z);
+  
+  // Agregar a buffer circular
+  accelBuffer[bufferIndex] = accelMag;
+  gyroBuffer[bufferIndex] = gyroMag;
+  
+  bufferIndex = (bufferIndex + 1) % MAX_SAMPLES;
+  if (sampleCount < MAX_SAMPLES) sampleCount++;
+  
+  // Calcular promedios
+  float accelSum = 0, gyroSum = 0;
+  for (int i = 0; i < sampleCount; i++) {
+    accelSum += accelBuffer[i];
+    gyroSum += gyroBuffer[i];
+  }
+  
+  avgAccelMag = accelSum / sampleCount;
+  avgGyroMag = gyroSum / sampleCount;
+}
+
+void analyzeMovementAndAdjustInterval() {
+  // Analizar movimiento basado en GPS
+  bool gpsMoving = (currentSpeed > movingThreshold);
+  bool gpsFastMoving = (currentSpeed > fastMovingThreshold);
+  
+  // Analizar movimiento basado en IMU
+  bool imuMoving = false;
+  if (mpuInitialized && sampleCount >= 3) {
+    // Usar umbrales dinámicos para detectar movimiento
+    imuMoving = (avgAccelMag > thresholds.sitting_accel || avgGyroMag > thresholds.sitting_gyro);
+  }
+  
+  // Determinar estado de movimiento combinado
+  isMoving = gpsMoving || imuMoving;
+  
+  // Ajustar intervalo según estado de movimiento
+  unsigned long previousInterval = currentSendInterval;
+  
+  if (gpsFastMoving) {
+    currentSendInterval = INTERVAL_FAST_MOVING;
+    if (!isRecordingRoute) {
+      Serial.println("🏃‍♂️ MOVIMIENTO RÁPIDO DETECTADO - Iniciando grabación de ruta");
+      startRouteRecording();
+    }
+  } else if (isMoving) {
+    currentSendInterval = INTERVAL_MOVING;
+    if (!isRecordingRoute) {
+      Serial.println("🚶‍♂️ MOVIMIENTO DETECTADO - Iniciando grabación de ruta");
+      startRouteRecording();
+    }
+  } else {
+    currentSendInterval = INTERVAL_STATIONARY;
+    if (isRecordingRoute) {
+      Serial.println("🛑 MOVIMIENTO DETENIDO - Guardando ruta");
+      stopRouteRecording();
+    }
+  }
+  
+  // Log cambios de intervalo
+  if (previousInterval != currentSendInterval) {
+    Serial.printf("⏱️ Intervalo cambiado: %lu ms -> %lu ms\n", 
+                 previousInterval, currentSendInterval);
+    Serial.printf("   GPS Speed: %.2f m/s, IMU Moving: %s\n", 
+                 currentSpeed, imuMoving ? "SÍ" : "NO");
+  }
+}
+
+void startRouteRecording() {
+  isRecordingRoute = true;
+  routeBufferIndex = 0;
+  Serial.println("📍 Iniciando grabación de ruta");
+}
+
+void stopRouteRecording() {
+  if (isRecordingRoute && routeBufferIndex > 2) {
+    Serial.printf("💾 Guardando ruta con %d puntos\n", routeBufferIndex);
+    sendRouteData();
+  }
+  isRecordingRoute = false;
+  routeBufferIndex = 0;
+}
+
+void addRoutePoint(float lat, float lng, float speed, String activity) {
+  if (isRecordingRoute && routeBufferIndex < MAX_TRACK_POINTS) {
+    routeBuffer[routeBufferIndex] = {
+      lat, lng, millis(), speed, activity
+    };
+    routeBufferIndex++;
+    
+    Serial.printf("📌 Punto de ruta %d: %.6f, %.6f (%.2f m/s)\n", 
+                 routeBufferIndex, lat, lng, speed);
+  }
+}
+
+void sendRouteData() {
+  if (routeBufferIndex == 0) return;
+  
+  jsonDoc.clear();
+  jsonDoc["type"] = "route_data";
+  jsonDoc["petId"] = PET_ID;
+  jsonDoc["deviceId"] = DEVICE_ID;
+  jsonDoc["timestamp"] = millis();
+  jsonDoc["pointCount"] = routeBufferIndex;
+  
+  JsonArray points = jsonDoc.createNestedArray("route");
+  
+  for (int i = 0; i < routeBufferIndex; i++) {
+    JsonObject point = points.createNestedObject();
+    point["lat"] = routeBuffer[i].lat;
+    point["lng"] = routeBuffer[i].lng;
+    point["timestamp"] = routeBuffer[i].timestamp;
+    point["speed"] = routeBuffer[i].speed;
+    point["activity"] = routeBuffer[i].activity;
+  }
+  
+  String message;
+  serializeJson(jsonDoc, message);
+  
+  if (wsConnected) {
+    ws.sendTXT(message);
+    Serial.printf("📤 Ruta enviada con %d puntos\n", routeBufferIndex);
+  }
 }
 
 // ============================================================================
@@ -590,6 +762,14 @@ void sendPetData() {
       Serial.printf("   ✅ GPS: %.6f, %.6f enviado correctamente\n", 
                    jsonDoc["latitude"].as<float>(), 
                    jsonDoc["longitude"].as<float>());
+      
+      // Agregar punto a la ruta si estamos grabando
+      if (isRecordingRoute) {
+        addRoutePoint(jsonDoc["latitude"].as<float>(), 
+                     jsonDoc["longitude"].as<float>(), 
+                     currentSpeed, 
+                     activity);
+      }
     }
   } else {
     Serial.println("❌ Error enviando datos - WebSocket desconectado");

@@ -37,12 +37,14 @@ export class WebSocketService {
   private ws: WebSocket | null = null;
   private petDataSubject = new BehaviorSubject<PetData | null>(null);
   private connectionStatusSubject = new BehaviorSubject<boolean>(false);
+  private routeDataSubject = new BehaviorSubject<any>(null);
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 3000;
 
   public petData$: Observable<PetData | null> = this.petDataSubject.asObservable();
   public connectionStatus$: Observable<boolean> = this.connectionStatusSubject.asObservable();
+  public routeData$: Observable<any> = this.routeDataSubject.asObservable();
 
   constructor(private ngZone: NgZone) {
     this.connect();
@@ -97,6 +99,13 @@ export class WebSocketService {
     try {
       const parsedData = JSON.parse(data);
       console.log('📨 Datos recibidos del WebSocket:', parsedData);
+      
+      // Manejar datos de ruta
+      if (parsedData.type === 'route_data') {
+        console.log('📍 Datos de ruta recibidos:', parsedData);
+        this.routeDataSubject.next(parsedData);
+        return;
+      }
       
       // Normalizar datos: convertir latitude/longitude a coordinates para Mapbox
       if (parsedData.latitude !== undefined && parsedData.longitude !== undefined) {

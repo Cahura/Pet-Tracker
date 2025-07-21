@@ -6,13 +6,11 @@
 #include <Adafruit_Sensor.h>
 #include <TinyGPSPlus.h>
 
-// Configuración de pines I2C para ESP32C6
-#define SDA_PIN 8
-#define SCL_PIN 9
+// Configuración de pines I2C para ESP32C6 (corregidos)
+#define SDA_PIN 6
+#define SCL_PIN 7
 
-// Configuración de pines UART para GPS
-#define GPS_RX 17  // RX del ESP32 (conectado al TX del GPS)
-#define GPS_TX 16  // TX del ESP32 (conectado al RX del GPS)
+// GPS usará UART1 con pines por defecto del ESP32C6
 
 // Configuración WiFi (OBLIGATORIO CAMBIAR POR TUS CREDENCIALES)
 const char* ssid = "TU_WIFI_SSID";           
@@ -41,6 +39,8 @@ const unsigned long RECONNECT_INTERVAL = 30000; // Reintentar conexión cada 30 
 bool wifiConnected = false;
 bool wsConnected = false;
 bool mpuInitialized = false;
+bool gpsInitialized = false; // Nueva variable para estado GPS
+bool gpsReady = false; // GPS ha obtenido su primera ubicación válida
 
 // Variables para análisis de actividad
 float previousLat = 0.0;
@@ -65,6 +65,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     case WStype_CONNECTED:
       Serial.printf("✅ WebSocket conectado a: %s\n", payload);
       wsConnected = true;
+      // Enviar mensaje de identificación
+      ws.sendTXT("{\"type\":\"device_connect\",\"deviceId\":\"ESP32C6_MAX\"}");
       break;
       
     case WStype_TEXT:
@@ -76,53 +78,50 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       wsConnected = false;
       break;
       
+    case WStype_FRAGMENT_TEXT_START:
+    case WStype_FRAGMENT_BIN_START:
+    case WStype_FRAGMENT:
+    case WStype_FRAGMENT_FIN:
+      Serial.println("📦 Fragmento WebSocket recibido");
+      break;
+      
+    case WStype_PING:
+      Serial.println("🏓 Ping WebSocket");
+      break;
+      
+    case WStype_PONG:
+      Serial.println("🏓 Pong WebSocket");
+      break;
+      
     default:
+      Serial.printf("🔍 Evento WebSocket desconocido: %d\n", type);
       break;
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  delay(2000); // Delay mayor para estabilización
+  
+  Serial.println();
   Serial.println("=== INICIANDO ESP32C6 PET TRACKER OPTIMIZADO ===");
+  Serial.flush(); // Asegurar que se imprima
 
-  // Inicializar I2C para MPU6050
-  Serial.print("Inicializando I2C... ");
+  // Inicializar I2C para MPU6050 primero
+  Serial.print("Inicializando I2C (SDA=6, SCL=7)... ");
+  Serial.flush();
   Wire.begin(SDA_PIN, SCL_PIN);
+  delay(100);
   Serial.println("OK");
 
-  // Inicializar GPS UART
-  Serial.print("Inicializando GPS UART... ");
-  SerialGPS.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
-  Serial.println("OK");
-
-  // Conectar a WiFi con timeout
-  Serial.print("Conectando a WiFi");
-  WiFi.begin(ssid, password);
-  
-  int wifiAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 20) {
-    delay(500);
-    Serial.print(".");
-    wifiAttempts++;
-  }
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n✅ WiFi conectado!");
-    Serial.printf("📍 IP: %s\n", WiFi.localIP().toString().c_str());
-    wifiConnected = true;
-  } else {
-    Serial.println("\n❌ Error conectando WiFi");
-    wifiConnected = false;
-  }
-
-  // Inicializar MPU6050 con manejo de errores
+  // Inicializar MPU6050 con manejo de errores ANTES del GPS
   Serial.print("Inicializando MPU6050... ");
+  Serial.flush();
   if (mpu.begin()) {
     // Configuración optimizada del sensor
-    mpu.setAccelerometerRange(MPU6050_RANGE_4_G);    // Rango aumentado para mejor detección
-    mpu.setGyroRange(MPU6050_RANGE_500_DEG);         // Rango aumentado para mejor detección
-    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);      // Filtro para reducir ruido
+    mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     Serial.println("OK");
     mpuInitialized = true;
   } else {
@@ -130,27 +129,110 @@ void setup() {
     mpuInitialized = false;
   }
 
-  // Configurar WebSocket
+  // Inicializar GPS UART de forma simple
+  Serial.print("Inicializando GPS UART... ");
+  Serial.flush();
+  
+  // Inicialización GPS ultra-simple
+  SerialGPS.begin(9600, SERIAL_8N1, -1, -1, false, 20000UL); // Usar pines por defecto
+  delay(100); // Delay mínimo
+  
+  Serial.println("OK (GPS en segundo plano)");
+  gpsInitialized = true; // Asumir que está disponible
+
+  // Conectar a WiFi con timeout y mejor manejo
+  Serial.print("Conectando a WiFi");
+  Serial.flush();
+  WiFi.begin(ssid, password);
+  
+  int wifiAttempts = 0;
+  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 30) { // Más intentos
+    delay(500);
+    Serial.print(".");
+    wifiAttempts++;
+    
+    // Watchdog reset prevention
+    if (wifiAttempts % 10 == 0) {
+      Serial.flush();
+      yield(); // Ceder control para evitar watchdog
+    }
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println();
+    Serial.println("✅ WiFi conectado!");
+    Serial.printf("📍 IP: %s\n", WiFi.localIP().toString().c_str());
+    Serial.flush();
+    wifiConnected = true;
+  } else {
+    Serial.println();
+    Serial.println("❌ Error conectando WiFi - continuará sin conexión");
+    Serial.flush();
+    wifiConnected = false;
+  }
+
+  // Configurar WebSocket solo si WiFi está conectado
   if (wifiConnected) {
-    Serial.print("Configurando WebSocket... ");
+    Serial.print("Configurando WebSocket SSL... ");
+    Serial.flush();
+    
+    // Configuración específica para Railway
     ws.beginSSL(ws_host, ws_port, ws_path);
     ws.onEvent(webSocketEvent);
-    ws.setReconnectInterval(5000);  // Reconexión automática cada 5 segundos
+    ws.setReconnectInterval(5000);
+    ws.enableHeartbeat(15000, 3000, 2); // Heartbeat cada 15s
+    
+    // Headers adicionales para Railway
+    ws.setExtraHeaders("Origin: https://pet-tracker-production.up.railway.app");
+    
     Serial.println("OK");
+    
+    // Intentar conexión inmediata
+    Serial.print("Conectando WebSocket... ");
+    Serial.flush();
+    
+    unsigned long wsStart = millis();
+    while (!wsConnected && (millis() - wsStart < 10000)) { // 10 segundos máximo
+      ws.loop();
+      delay(100);
+    }
+    
+    if (wsConnected) {
+      Serial.println("✅ WebSocket conectado!");
+    } else {
+      Serial.println("⚠️ WebSocket no conectó (continuará intentando)");
+    }
   }
   
   Serial.println("=== SISTEMA INICIADO ===");
+  Serial.println("📊 Estado inicial:");
+  Serial.printf("   WiFi: %s\n", wifiConnected ? "✅ Conectado" : "❌ Desconectado");
+  Serial.printf("   IMU:  %s\n", mpuInitialized ? "✅ Funcionando" : "❌ Error");
+  Serial.printf("   GPS:  %s\n", gpsInitialized ? (gpsReady ? "✅ Listo" : "🔍 Buscando señal...") : "❌ Deshabilitado");
+  Serial.flush();
 }
 
 void loop() {
   // Mantener conexión WebSocket activa
-  ws.loop();
+  if (wifiConnected) {
+    ws.loop();
+  }
   
-  // Procesar datos GPS continuamente
-  while (SerialGPS.available() > 0) {
-    if (gps.encode(SerialGPS.read())) {
-      // GPS ha recibido una nueva sentencia completa
+  // Procesar datos GPS con manejo de errores
+  try {
+    while (SerialGPS.available() > 0) {
+      char c = SerialGPS.read();
+      if (gps.encode(c)) {
+        // GPS ha recibido una nueva sentencia completa válida
+        if (gps.location.isUpdated()) {
+          Serial.printf("📍 GPS actualizado: %.6f, %.6f\n", 
+                       gps.location.lat(), gps.location.lng());
+        }
+      }
     }
+  } catch (...) {
+    // Ignorar errores de GPS para evitar colgado
+    Serial.println("⚠️ Error leyendo GPS - continuando...");
   }
 
   // Verificar si es momento de enviar datos
@@ -164,6 +246,9 @@ void loop() {
       attemptReconnection();
     }
   }
+  
+  // Pequeño delay para evitar saturar el CPU
+  delay(10);
 }
 
 void sendOptimizedPetData() {
@@ -187,6 +272,12 @@ void sendOptimizedPetData() {
   if (gps.location.isValid() && gps.location.age() < 5000) { // GPS válido si es reciente (5 seg)
     currentLat = gps.location.lat();
     currentLng = gps.location.lng();
+    
+    // Marcar GPS como listo si es la primera vez que obtenemos una ubicación válida
+    if (!gpsReady) {
+      gpsReady = true;
+      Serial.println("🛰️ GPS LISTO: Señal adquirida!");
+    }
     
     jsonDoc["latitude"] = currentLat;
     jsonDoc["longitude"] = currentLng;
@@ -212,6 +303,15 @@ void sendOptimizedPetData() {
     lastGPSTime = millis();
     gpsValid = true;
   } else {
+    // GPS no válido - mostrar estado de búsqueda solo si está inicializado
+    if (gpsInitialized) {
+      static unsigned long lastSearchMessage = 0;
+      if (millis() - lastSearchMessage > 10000) { // Cada 10 segundos
+        Serial.printf("🔍 GPS: Buscando señal... (sats: %d)\n", gps.satellites.value());
+        lastSearchMessage = millis();
+      }
+    }
+    
     jsonDoc["latitude"] = nullptr;
     jsonDoc["longitude"] = nullptr;
     jsonDoc["gps_valid"] = false;
@@ -388,11 +488,12 @@ void attemptReconnection() {
   
   lastReconnect = now;
   
-  // Verificar WiFi
+  // Verificar WiFi primero
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("🔄 Reintentando conexión WiFi...");
     WiFi.begin(ssid, password);
     wifiConnected = false;
+    wsConnected = false; // Si no hay WiFi, no hay WebSocket
     return;
   } else {
     wifiConnected = true;
@@ -400,7 +501,10 @@ void attemptReconnection() {
   
   // Verificar WebSocket
   if (!wsConnected) {
-    Serial.println("� Reintentando conexión WebSocket...");
+    Serial.println("🔄 Reintentando conexión WebSocket...");
+    ws.disconnect();
+    delay(1000);
     ws.beginSSL(ws_host, ws_port, ws_path);
+    ws.setExtraHeaders("Origin: https://pet-tracker-production.up.railway.app");
   }
 }

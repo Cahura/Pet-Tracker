@@ -125,7 +125,7 @@ import { Subscription } from 'rxjs';
             <div class="location-info">
               <h4>Última ubicación</h4>
               <p class="location-address">{{ currentAnimal.location }}</p>
-              <p class="location-time">Hace 2 minutos</p>
+              <p class="location-time">{{ getLastUpdateText() }}</p>
             </div>          <div class="quick-actions">
             <button class="action-btn" [class.active]="showHistoryOnMapActive" (click)="onQuickAction('history'); $event.stopPropagation()">
               <i class="fas fa-route"></i>
@@ -389,8 +389,14 @@ export class MapViewComponent implements AfterViewInit, OnInit, OnDestroy {
   // Método para obtener el texto de última actualización
   getLastUpdateText(): string {
     if (this.currentAnimal?.name === 'Max') {
-      // Para Max: mostrar tiempo real basado en si el ESP32C6 está enviando datos
-      return this.mapComponent?.isESP32Connected ? 'Ahora' : 'Sin datos';
+      // Para Max: mostrar tiempo real basado en los datos del ESP32C6
+      if (this.mapComponent?.isESP32Connected && this.mapComponent?.lastIMUUpdate?.timestamp) {
+        return this.mapComponent.getTimeAgo(this.mapComponent.lastIMUUpdate.timestamp);
+      } else if (this.mapComponent?.lastLocationUpdate?.timestamp) {
+        return this.mapComponent.getTimeAgo(this.mapComponent.lastLocationUpdate.timestamp);
+      } else {
+        return 'Sin datos';
+      }
     } else {
       // Para mascotas demo: mostrar tiempo fijo
       return 'Hace 5 min';

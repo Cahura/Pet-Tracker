@@ -74,7 +74,7 @@ import { PetSelectionService } from '../services/pet-selection.service';
             
             <div class="data-row">
               <i class="fas fa-clock"></i>
-              <span>{{ selectedPet?.lastActivity || 'Hace 5 min' }}</span>
+              <span>{{ getTimeAgo(lastIMUUpdate?.timestamp || lastLocationUpdate?.timestamp) }}</span>
             </div>
           </div>
         </div>
@@ -1756,9 +1756,17 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           gyroX: data.gyroscope.x,
           gyroY: data.gyroscope.y,
           gyroZ: data.gyroscope.z,
-          activity: data.activity,
+          activity: data.activity || 'unknown',
           timestamp: data.timestamp
         };
+        
+        // Debug logging
+        console.log('Datos recibidos del ESP32C6:', {
+          activity: data.activity,
+          connectionStatus: data.connectionStatus,
+          timestamp: data.timestamp
+        });
+        
         this.updatePetActivity(this.lastIMUUpdate);
       }
     });
@@ -2027,13 +2035,56 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Texto descriptivo para cada estado de actividad
   public getActivityText(activityState: string): string {
-    switch (activityState) {
+    if (!activityState) {
+      // Si no hay actividad pero hay conexión, mostrar estado basado en conexión
+      if (this.isESP32Connected) {
+        return 'Conectado';
+      } else {
+        return 'Desconectado';
+      }
+    }
+    
+    switch (activityState.toLowerCase()) {
       case 'resting': return 'Descansando';
       case 'walking': return 'Caminando';
       case 'running': return 'Corriendo';
       case 'traveling': return 'En transporte';
       case 'disconnected': return 'Desconectado';
-      default: return 'Estado desconocido';
+      case 'connected': return 'Conectado';
+      case 'unknown': return this.isESP32Connected ? 'Conectado' : 'Desconectado';
+      default: return this.isESP32Connected ? 'Conectado' : 'Estado desconocido';
+    }
+  }
+
+  // Función para calcular tiempo transcurrido
+  public getTimeAgo(timestamp: number | string | Date): string {
+    if (!timestamp) return 'Tiempo desconocido';
+    
+    let date: Date;
+    if (typeof timestamp === 'number') {
+      // Si es timestamp de millis (como el que envía el ESP32C6)
+      date = new Date(timestamp);
+    } else if (typeof timestamp === 'string') {
+      date = new Date(timestamp);
+    } else {
+      date = timestamp;
+    }
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    
+    if (diffSeconds < 60) {
+      return 'Hace unos segundos';
+    } else if (diffMinutes < 60) {
+      return `Hace ${diffMinutes} min`;
+    } else if (diffHours < 24) {
+      return `Hace ${diffHours}h`;
+    } else {
+      const diffDays = Math.floor(diffHours / 24);
+      return `Hace ${diffDays}d`;
     }
   }
 

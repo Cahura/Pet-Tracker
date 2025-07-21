@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEBUG WebSocket Pet Tracker - Railway</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e, #2d2d30);
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .status {
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .status.connecting {
+            background: rgba(255, 159, 10, 0.2);
+            border: 1px solid rgba(255, 159, 10, 0.5);
+            color: #FF9F0A;
+        }
+        .status.connected {
+            background: rgba(52, 199, 89, 0.2);
+            border: 1px solid rgba(52, 199, 89, 0.5);
+            color: #34C759;
+        }
+        .status.disconnected {
+            background: rgba(255, 59, 48, 0.2);
+            border: 1px solid rgba(255, 59, 48, 0.5);
+            color: #FF3B30;
+        }
+        .logs {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .log-entry {
+            margin: 4px 0;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .log-info { background: rgba(0, 122, 255, 0.1); color: #007AFF; }
+        .log-success { background: rgba(52, 199, 89, 0.1); color: #34C759; }
+        .log-warning { background: rgba(255, 159, 10, 0.1); color: #FF9F0A; }
+        .log-error { background: rgba(255, 59, 48, 0.1); color: #FF3B30; }
+        .coordinates {
+            background: rgba(88, 86, 214, 0.1);
+            border: 1px solid rgba(88, 86, 214, 0.3);
+            color: #5856D6;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-family: monospace;
+        }
+        button {
+            background: linear-gradient(135deg, #007AFF, #0056CC);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 8px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3);
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .data-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .data-card h3 {
+            margin: 0 0 8px 0;
+            color: #007AFF;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .data-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 DEBUG Pet Tracker WebSocket - Railway</h1>
+        <p>Esta página debuggea la conexión WebSocket directa con Railway para identificar problemas.</p>
+        
+        <div id="status" class="status connecting">🔄 Conectando a Railway WebSocket...</div>
+        
+        <button onclick="testESP32Format()">📱 Test Formato ESP32C6</button>
+        <button onclick="clearLogs()">🧹 Limpiar Logs</button>
+        <button onclick="reconnectWS()">🔄 Reconectar</button>
+        
+        <div class="data-grid">
+            <div class="data-card">
+                <h3>Última Latitud</h3>
+                <div id="lastLat" class="data-value">N/A</div>
+            </div>
+            <div class="data-card">
+                <h3>Última Longitud</h3>
+                <div id="lastLng" class="data-value">N/A</div>
+            </div>
+            <div class="data-card">
+                <h3>GPS Válido</h3>
+                <div id="gpsValid" class="data-value">N/A</div>
+            </div>
+            <div class="data-card">
+                <h3>Última Actividad</h3>
+                <div id="lastActivity" class="data-value">N/A</div>
+            </div>
+        </div>
+        
+        <h3>📋 Logs en Tiempo Real:</h3>
+        <div id="logs" class="logs">
+            <div class="log-entry log-info">Iniciando debug de WebSocket...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        const maxLogs = 100;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            
+            // Mantener solo los últimos maxLogs mensajes
+            while (logs.children.length > maxLogs) {
+                logs.removeChild(logs.firstChild);
+            }
+            
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${status}`;
+            statusDiv.innerHTML = message;
+        }
+
+        function connectWebSocket() {
+            const wsUrl = 'wss://pet-tracker-production.up.railway.app/ws';
+            log(`🔌 Intentando conectar a: ${wsUrl}`, 'info');
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    log('✅ WebSocket conectado exitosamente a Railway!', 'success');
+                    updateStatus('connected', '🟢 Conectado a Railway WebSocket');
+                };
+                
+                ws.onmessage = function(event) {
+                    messageCount++;
+                    log(`📨 Mensaje #${messageCount} recibido del WebSocket`, 'info');
+                    
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📋 Datos parseados: ${JSON.stringify(data, null, 2)}`, 'success');
+                        
+                        // Actualizar datos en tiempo real
+                        if (data.latitude !== undefined) {
+                            document.getElementById('lastLat').textContent = data.latitude;
+                        }
+                        if (data.longitude !== undefined) {
+                            document.getElementById('lastLng').textContent = data.longitude;
+                        }
+                        if (data.gps_valid !== undefined) {
+                            document.getElementById('gpsValid').textContent = data.gps_valid ? 'SÍ' : 'NO';
+                        }
+                        if (data.activity !== undefined) {
+                            document.getElementById('lastActivity').textContent = data.activity;
+                        }
+                        
+                        // Debug específico para coordenadas
+                        if (data.latitude && data.longitude && data.gps_valid) {
+                            const mapUrl = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+                            log(`🌍 <strong>COORDENADAS RECIBIDAS:</strong>`, 'success');
+                            log(`   📍 Lat: ${data.latitude}, Lng: ${data.longitude}`, 'success');
+                            log(`   🗺️  Ver en mapa: <a href="${mapUrl}" target="_blank" style="color: #34C759;">${mapUrl}</a>`, 'success');
+                            log(`   ✅ GPS válido: ${data.gps_valid}`, 'success');
+                            
+                            // Validar si está en Lima o en el océano
+                            const lat = parseFloat(data.latitude);
+                            const lng = parseFloat(data.longitude);
+                            
+                            if (lat > -12.3 && lat < -11.8 && lng > -77.3 && lng < -76.8) {
+                                log(`✅ Coordenadas están en Lima - CORRECTAS`, 'success');
+                            } else if (lat === 0 && lng === 0) {
+                                log(`❌ Coordenadas en (0,0) - PROBLEMA: punto nulo`, 'error');
+                            } else if (Math.abs(lat) < 1 && Math.abs(lng) < 1) {
+                                log(`❌ Coordenadas cerca del ecuador/meridiano - POSIBLE PROBLEMA`, 'warning');
+                            } else {
+                                log(`⚠️  Coordenadas fuera de Lima: lat=${lat}, lng=${lng}`, 'warning');
+                            }
+                        }
+                        
+                    } catch (parseError) {
+                        log(`❌ Error parseando JSON: ${parseError.message}`, 'error');
+                        log(`📄 Datos raw: ${event.data}`, 'warning');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ Error WebSocket: ${error}`, 'error');
+                    updateStatus('disconnected', '❌ Error de conexión');
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket cerrado. Código: ${event.code}, Razón: ${event.reason}`, 'warning');
+                    updateStatus('disconnected', '🔴 Desconectado');
+                    
+                    // Reintentar conexión en 5 segundos
+                    setTimeout(() => {
+                        log('🔄 Reintentando conexión...', 'info');
+                        connectWebSocket();
+                    }, 5000);
+                };
+                
+            } catch (error) {
+                log(`❌ Error creando WebSocket: ${error.message}`, 'error');
+                updateStatus('disconnected', '❌ Error al crear conexión');
+            }
+        }
+
+        function testESP32Format() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const testData = {
+                    petId: 1,
+                    deviceId: "ESP32C6_OPTIMIZED",
+                    timestamp: Date.now(),
+                    latitude: -12.046374,  // Coordenadas reales de Lima
+                    longitude: -77.042793,
+                    battery: 85,
+                    activity: "walking",
+                    accelerometer: { x: 0.05, y: 0.12, z: 9.81 },
+                    gyroscope: { x: 0.02, y: -0.01, z: 0.03 },
+                    temperature: 22.5,
+                    gps_valid: true,
+                    gps_speed: 1.2,
+                    gps_speed_kmh: 4.3
+                };
+                
+                ws.send(JSON.stringify(testData));
+                log('📤 Enviado mensaje de test con formato ESP32C6', 'info');
+                log(`📋 Datos enviados: ${JSON.stringify(testData, null, 2)}`, 'info');
+            } else {
+                log('❌ WebSocket no está conectado', 'error');
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '<div class="log-entry log-info">Logs limpiados...</div>';
+            messageCount = 0;
+        }
+
+        function reconnectWS() {
+            if (ws) {
+                ws.close();
+            }
+            updateStatus('connecting', '🔄 Reconectando...');
+            setTimeout(connectWebSocket, 1000);
+        }
+
+        // Iniciar conexión al cargar la página
+        connectWebSocket();
+    </script>
+</body>
+</html>

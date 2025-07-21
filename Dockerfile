@@ -13,11 +13,8 @@ COPY . .
 # Build del proyecto
 RUN npm run build
 
-# Instalar serve globalmente para servir archivos estáticos
-RUN npm install -g serve
-
-# Exponer puerto
+# Exponer puerto para Railway
 EXPOSE 3000
 
-# Comando de inicio con configuración SPA para Angular (evita error 404)
-CMD ["serve", "-s", "frontend/dist/pet-tracker/browser", "-l", "3000", "--single"]
+# Comando de inicio - servidor Node.js con WebSocket
+CMD ["npm", "start"]

@@ -4,7 +4,7 @@
   "description": "Pet Tracker - ESP32C6 GPS/IMU tracking via Railway WebSocket",
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
-    "start": "npx serve frontend/dist/pet-tracker/browser -l $PORT",
+    "start": "node server.js",
     "railway:start": "npm start"
   },
   "engines": {
@@ -27,6 +27,7 @@
   "author": "Cahura",
   "license": "MIT",
   "dependencies": {
-    "serve": "^14.2.1"
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
   }
 }

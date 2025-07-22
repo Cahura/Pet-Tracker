@@ -1045,6 +1045,10 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     console.log('🐕 INICIALIZANDO MASCOTA MAX EN UPC MONTERRICO');
     console.log('🐕 ===============================================');
     
+    // PRIMERO: Actualizar petLocation a UPC Monterrico ANTES de crear marcador
+    this.petLocation = this.UPC_MONTERRICO_COORDS;
+    console.log('🏫 petLocation actualizado a UPC Monterrico:', this.petLocation);
+    
     // Crear datos de mascota por defecto (Max)
     const defaultPet = {
       id: 1,
@@ -1065,11 +1069,15 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     this.currentPetData = defaultPet;
     this.selectedPet = defaultPet;
     
-    // Actualizar petLocation a UPC Monterrico
-    this.petLocation = this.UPC_MONTERRICO_COORDS;
-    
-    // Crear marcador en UPC Monterrico
+    // IMPORTANTE: Crear marcador DESPUÉS de actualizar petLocation
     this.addPetMarkerWithAnimal(defaultPet);
+    
+    // TAMBIÉN: Centrar el mapa en UPC Monterrico
+    if (this.map) {
+      console.log('🎯 Centrando mapa en UPC Monterrico...');
+      this.map.setCenter(this.UPC_MONTERRICO_COORDS);
+      this.map.setZoom(15);
+    }
     
     console.log('✅ Mascota Max inicializada en UPC Monterrico:', this.UPC_MONTERRICO_COORDS);
     console.log('🐕 ===============================================');
@@ -1212,9 +1220,18 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     });
 
     // Create and add marker to map
+    console.log('🎯 ===============================================');
+    console.log('🎯 CREANDO MARCADOR EN MAPBOX');
+    console.log('🎯 this.petLocation:', this.petLocation);
+    console.log('🎯 animal.coordinates:', animal.coordinates);
+    console.log('🎯 UPC_MONTERRICO_COORDS:', this.UPC_MONTERRICO_COORDS);
+    console.log('🎯 ===============================================');
+    
     this.petMarker = new mapboxgl.Marker(markerElement)
       .setLngLat(this.petLocation)
       .addTo(this.map);
+      
+    console.log('✅ Marcador creado en coordenadas:', this.petLocation);
 
     // Add zoom listener to update marker size (remove previous listeners)
     this.map.off('zoom', this.updateMarkerSize);

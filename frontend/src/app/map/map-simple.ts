@@ -923,8 +923,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private isPopupHovered = false;
   
   // Ubicación actual de la mascota (UPC Monterrico por defecto cuando ESP32C6 desconectado)
-  private petLocation: [number, number] = [-76.9717, -12.0635]; // UPC Sede Monterrico
-  private readonly UPC_MONTERRICO_COORDS: [number, number] = [-76.9717, -12.0635];
+  private petLocation: [number, number] = [-76.9717, -12.0635]; // UPC Sede Monterrico - Lima, Perú
+  private readonly UPC_MONTERRICO_COORDS: [number, number] = [-76.9717, -12.0635]; // Universidad Peruana de Ciencias Aplicadas - Sede Monterrico
 
   // Función para cambiar automáticamente entre UPC Monterrico y GPS real
   private handleLocationBasedOnConnection(forceUpdate: boolean = false): void {
@@ -1168,16 +1168,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       this.selectedPet = animal;
       console.log('✅ Selected pet set to:', this.selectedPet);
       
-      // Get marker position for popup
-      const rect = markerElement.getBoundingClientRect();
-      this.popupPosition = {
-        x: rect.left + rect.width / 2,
-        y: rect.top - 180
-      };
-      
-      this.showPetPopup = true;
-      console.log('✅ Popup activated at position:', this.popupPosition);
-      this.cdr.detectChanges();
+      // CORREGIDO: Usar showPetPopupAtMarker() que aplica las animaciones correctas
+      this.showPetPopupAtMarker(event);
     });
 
     markerElement.addEventListener('mouseleave', (event) => {
@@ -1205,16 +1197,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       event.stopPropagation();
       
       this.selectedPet = animal;
-      const rect = markerElement.getBoundingClientRect();
-      this.popupPosition = {
-        x: rect.left + rect.width / 2,
-        y: rect.top - 180
-      };
       
-      console.log('👆 ⭐ Popup position calculated:', this.popupPosition);
-      
-      this.showPetPopup = true;
-      this.cdr.detectChanges();
+      // CORREGIDO: Usar showPetPopupAtMarker() que aplica las animaciones correctas
+      this.showPetPopupAtMarker(event);
       
       console.log('👆 ⭐ Popup should be visible now. showPetPopup =', this.showPetPopup);
     });
@@ -2431,11 +2416,17 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Métodos para el popup de información con animaciones
   public showPetPopupAtMarker(event: MouseEvent): void {
-    console.log('Intentando mostrar popup...');
+    console.log('🎯 ===============================================');
+    console.log('🎯 SHOWPETPOPUPATMARKER LLAMADO');
+    console.log('🎯 Event:', event);
+    console.log('🎯 selectedPet:', this.selectedPet);
+    console.log('🎯 ===============================================');
     
     // Obtener la posición del marcador en la pantalla
     const markerElement = event.currentTarget as HTMLElement;
     const rect = markerElement.getBoundingClientRect();
+    
+    console.log('🎯 Rect del marcador:', rect);
     
     // Posicionar popup exactamente encima del marcador
     this.popupPosition = {
@@ -2446,11 +2437,13 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     // Asegurar que el popup está visible
     this.showPetPopup = true;
     
-    console.log('Popup activado. Posición:', this.popupPosition);
-    console.log('showPetPopup:', this.showPetPopup);
+    console.log('🎯 Popup activado. Posición:', this.popupPosition);
+    console.log('🎯 showPetPopup:', this.showPetPopup);
     
     // Forzar detección de cambios
     this.cdr.detectChanges();
+    
+    console.log('🎯 detectChanges() ejecutado');
     
     // Aplicar animación de entrada después de que el elemento se renderice
     setTimeout(() => {

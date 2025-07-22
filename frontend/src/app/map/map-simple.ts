@@ -1777,6 +1777,11 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         if (this.selectedPet && this.selectedPet.name === 'Max') {
           this.petSelectionService.updatePetStatus(this.selectedPet.id, 'offline');
           this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'disconnected');
+          
+          // Regresar a UPC Monterrico cuando WebSocket se desconecte
+          console.log('🏫 WebSocket desconectado: regresando a ubicación UPC Monterrico');
+          const upcCoordinates: [number, number] = [-76.9717, -12.0635];
+          this.updatePetMarkerPosition(upcCoordinates, false);
         }
       }
     });
@@ -1821,6 +1826,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           if (this.selectedPet && this.selectedPet.name === 'Max') {
             this.petSelectionService.updatePetStatus(this.selectedPet.id, 'online');
             this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'resting');
+          }
+          
+          // Cambiar automáticamente a ubicación GPS real cuando se conecte por primera vez
+          if (dataToProcess.longitude && dataToProcess.latitude && 
+              dataToProcess.longitude !== 0 && dataToProcess.latitude !== 0) {
+            const realCoordinates: [number, number] = [dataToProcess.longitude, dataToProcess.latitude];
+            console.log('🎯 ESP32C6 conectado: cambiando de UPC Monterrico a ubicación GPS real:', realCoordinates);
+            this.updatePetMarkerPosition(realCoordinates, false);
           }
         }
         
@@ -1897,6 +1910,11 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
             this.petSelectionService.updatePetStatus(this.selectedPet.id, 'offline');
             this.petSelectionService.updatePetActivityState(this.selectedPet.id, 'disconnected');
           }
+          
+          // Regresar automáticamente a UPC Monterrico cuando se desconecte
+          console.log('🏫 ESP32C6 desconectado: regresando a ubicación UPC Monterrico');
+          const upcCoordinates: [number, number] = [-76.9717, -12.0635];
+          this.updatePetMarkerPosition(upcCoordinates, false);
         }
       }
     }, 5000); // Verificar cada 5 segundos
@@ -1910,29 +1928,26 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private updatePetLocation(locationData: any): void {
     console.log('🔍 updatePetLocation llamado con:', locationData);
     
-    // Solo actualizar ubicación si es Max (petId: 1) - NO requerir GPS válido cuando ESP32 conectado
+    // Solo actualizar ubicación si es Max (petId: 1)
     if (this.currentPetData && this.currentPetData.name === 'Max' && locationData.petId === '1') {
       
-      // Si ESP32C6 está conectado, usar coordenadas recibidas (incluso sin GPS válido)
+      // Si ESP32C6 está conectado y hay coordenadas válidas, usar ubicación real del GPS
       if (this.isESP32Connected && locationData.longitude && locationData.latitude && 
           locationData.longitude !== 0 && locationData.latitude !== 0) {
         const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
-        console.log('✅ ESP32C6 conectado: actualizando con coordenadas recibidas:', newCoordinates);
+        console.log('✅ ESP32C6 conectado: actualizando con coordenadas GPS reales:', newCoordinates);
         
         this.updatePetMarkerPosition(newCoordinates, false); // NO centrar automáticamente
         
-      } else if (locationData.gps_valid && locationData.longitude && locationData.latitude && 
-          locationData.longitude !== 0 && locationData.latitude !== 0) {
-        const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
-        console.log('✅ GPS válido: actualizando ubicación de Max:', newCoordinates);
-        
-        this.updatePetMarkerPosition(newCoordinates, false); // NO centrar automáticamente
-        
-      } else {
-        console.log('❌ ESP32C6 desconectado o coordenadas inválidas - usando ubicación UPC Monterrico');
-        // Ubicación fija: UPC Sede Monterrico
+      } else if (!this.isESP32Connected) {
+        // ESP32C6 desconectado - SIEMPRE usar UPC Monterrico como fallback
+        console.log('❌ ESP32C6 desconectado - ubicación fija en UPC Monterrico');
         const upcCoordinates: [number, number] = [-76.9717, -12.0635]; 
         this.updatePetMarkerPosition(upcCoordinates, false);
+        
+      } else {
+        // ESP32C6 conectado pero coordenadas inválidas - mantener última ubicación conocida
+        console.log('⚠️ ESP32C6 conectado pero coordenadas inválidas - manteniendo ubicación actual');
       }
     } else {
       console.log('🚫 updatePetLocation ignorado:', {

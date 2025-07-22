@@ -686,20 +686,19 @@ Por favor incluye:
 
 ---
 
-## 📞 Soporte y Contacto
+## 📞 Soporte y Documentación
 
 ### 🆘 **Obtener Ayuda**
 
 - **GitHub Issues**: Para reportar bugs o solicitar features
 - **Documentación**: Consultar archivos README en cada directorio
-- **Wiki del proyecto**: Guías detalladas y troubleshooting
+- **Guías de troubleshooting**: Información detallada en la documentación del proyecto
 
-### 📧 **Contacto del Desarrollador**
+### � **Recursos Adicionales**
 
-- **Desarrollador Principal**: [Tu Nombre]
-- **Email**: [tu.email@ejemplo.com]
-- **LinkedIn**: [Tu perfil de LinkedIn]
-- **GitHub**: [@tuusuario](https://github.com/tuusuario)
+- **Código fuente completo**: Disponible en este repositorio
+- **Documentación técnica**: Especificaciones detalladas en cada módulo
+- **Ejemplos de uso**: Implementaciones y configuraciones de referencia
 
 ---
 

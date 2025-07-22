@@ -6,8 +6,10 @@
     "build": "cd frontend && npm install && npm run build",
     "start": "node server.js",
     "railway:start": "npm run build && npm start",
-    "dev": "node server.js",
-    "test": "echo \"No tests specified\" && exit 0"
+    "railway:dev": "node server.js",
+    "dev": "echo 'Use Railway deployment for development' && exit 1",
+    "test": "echo \"No tests specified\" && exit 0",
+    "logs": "echo 'Check Railway dashboard for logs'"
   },
   "engines": {
     "node": ">=20.19.0",

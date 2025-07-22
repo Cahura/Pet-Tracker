@@ -4,6 +4,7 @@
   <img src="./huella.png" alt="Pet Tracker Logo" width="120" height="120">
   
   <p><strong>Sistema integral de seguimiento en tiempo real para mascotas con tecnología IoT avanzada</strong></p>
+  <p><strong>🚂 Optimizado para Railway Deployment</strong></p>
   
   ![Angular](https://img.shields.io/badge/Angular_20-DD0031?style=for-the-badge&logo=angular&logoColor=white)
   ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
@@ -18,6 +19,25 @@
   [![ESP32 Firmware](https://img.shields.io/badge/ESP32C6-Firmware_v2.0-blue?style=flat-square)](./esp32c6/)
   [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 </div>
+
+---
+
+## 🚂 Railway Deployment
+
+**Este proyecto está específicamente configurado para Railway y no debe ejecutarse localmente.**
+
+### 📡 URLs de Producción
+- **Frontend**: `https://pet-tracker-production.up.railway.app/`
+- **WebSocket**: `wss://pet-tracker-production.up.railway.app/ws`
+- **Health Check**: `https://pet-tracker-production.up.railway.app/health`
+
+### 🎯 ESP32C6 Configuration
+El ESP32C6 está configurado para conectarse directamente a Railway:
+```cpp
+const char* WS_HOST = "pet-tracker-production.up.railway.app";
+const int WS_PORT = 443;
+const char* WS_PATH = "/ws";
+```
 
 ---
 

@@ -995,7 +995,8 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       this.map.on('load', () => {
         console.log('Map loaded successfully!');
         this.customizeMapStyle();
-        // Don't add default marker - wait for pet data from service
+        // Inicializar mascota Max en UPC Monterrico por defecto cuando ESP32C6 está desconectado
+        this.initializeDefaultPet();
         this.hideLoadingWithAnimation();
       });
 
@@ -1036,6 +1037,33 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
   private addPetMarker(): void {
     // Don't create a default marker - wait for the actual pet data
     // This method is now only called when we have actual pet data
+  }
+
+  // Inicializar mascota Max por defecto en UPC Monterrico
+  private initializeDefaultPet(): void {
+    console.log('🐕 Inicializando mascota Max por defecto en UPC Monterrico');
+    
+    // Crear datos de mascota por defecto (Max)
+    const defaultPet = {
+      id: 1,
+      name: 'Max',
+      breed: 'Golden Retriever',
+      type: 'dog',
+      icon: 'fas fa-dog',
+      gradient: 'linear-gradient(135deg, #FFD700, #FFA500)',
+      color: '#FFD700',
+      coordinates: this.UPC_MONTERRICO_COORDS, // Comenzar en UPC Monterrico
+      activityState: 'disconnected' // Mostrar como desconectado inicialmente
+    };
+    
+    // Configurar datos actuales
+    this.currentPetData = defaultPet;
+    this.selectedPet = defaultPet;
+    
+    // Crear marcador en UPC Monterrico
+    this.addPetMarkerWithAnimal(defaultPet);
+    
+    console.log('✅ Mascota Max inicializada en UPC Monterrico:', this.UPC_MONTERRICO_COORDS);
   }
 
   private updateMarkerSize(): void {
@@ -1816,8 +1844,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           
           // Regresar a UPC Monterrico cuando WebSocket se desconecte
           console.log('🏫 WebSocket desconectado: regresando a ubicación UPC Monterrico');
-          const upcCoordinates: [number, number] = [-76.9717, -12.0635];
-          this.updatePetMarkerPosition(upcCoordinates, false);
+          this.handleLocationBasedOnConnection(true);
         }
       }
     });
@@ -1866,6 +1893,7 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           
           // Cambiar automáticamente desde UPC Monterrico a ubicación GPS real
           console.log('🔄 ESP32C6 conectado: iniciando transición a coordenadas GPS...');
+          this.handleLocationBasedOnConnection(true);
         }
         
         // Actualizar ubicación solo si GPS es válido y ha cambiado

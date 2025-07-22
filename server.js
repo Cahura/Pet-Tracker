@@ -43,7 +43,7 @@ app.get('/health', (req, res) => {
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     service: 'pet-tracker-websocket',
-    version: '2.1.0',
+    version: '2.2.0', // Incremento para forzar deployment
     environment: NODE_ENV,
     railway: RAILWAY_ENVIRONMENT,
     websocket: {

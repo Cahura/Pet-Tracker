@@ -58,22 +58,24 @@ app.get('/health', (req, res) => {
   res.status(200).json(healthStatus);
 });
 
-// Ruta raíz - servir la aplicación Angular o mensaje de estado
+// Ruta raíz - SIEMPRE servir la aplicación Angular
 app.get('/', (req, res) => {
   const frontendPath = path.join(__dirname, 'frontend/dist/pet-tracker/browser/index.html');
   
-  // Verificar si el frontend está disponible
+  // SIEMPRE servir el frontend Angular si existe
   if (fs.existsSync(frontendPath)) {
+    console.log('🌐 Sirviendo frontend Angular desde:', frontendPath);
     res.sendFile(frontendPath);
   } else {
-    // Si el frontend no está disponible, mostrar estado del servidor
-    res.status(200).json({
+    // Si el frontend no está construido, mostrar instrucciones
+    res.status(503).json({
       status: 'Pet Tracker Server Running',
-      message: 'WebSocket server is active',
+      message: 'Frontend not available - need to build Angular app',
       websocket: '/ws',
       health: '/health',
       timestamp: new Date().toISOString(),
-      frontend: 'Building or not available'
+      frontend: 'Run: npm run build to build frontend',
+      instructions: 'The Angular frontend needs to be built. Run "cd frontend && npm run build" then restart server.'
     });
   }
 });

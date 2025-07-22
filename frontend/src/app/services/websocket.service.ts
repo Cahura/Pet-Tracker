@@ -113,24 +113,37 @@ export class WebSocketService {
       
       // Normalizar datos: convertir latitude/longitude a coordinates para Mapbox
       if (parsedData.latitude !== undefined && parsedData.longitude !== undefined) {
-        console.log(`🔍 COORDENADAS RECIBIDAS:`);
-        console.log(`   latitude: ${parsedData.latitude}`);
-        console.log(`   longitude: ${parsedData.longitude}`);
+        console.log(`🔍 COORDENADAS RECIBIDAS DETALLADAS:`);
+        console.log(`   latitude RAW: ${parsedData.latitude} (tipo: ${typeof parsedData.latitude})`);
+        console.log(`   longitude RAW: ${parsedData.longitude} (tipo: ${typeof parsedData.longitude})`);
         console.log(`   gps_valid: ${parsedData.gps_valid}`);
         
-        // Validar coordenadas GPS (más permisivo para debugging)
-        if (parsedData.gps_valid && 
-            parsedData.latitude !== null && parsedData.longitude !== null && 
-            parsedData.latitude !== 0 && parsedData.longitude !== 0 &&
-            Math.abs(parsedData.latitude) <= 90 && Math.abs(parsedData.longitude) <= 180) {
-          
+        // Convertir a números si son strings
+        const lat = typeof parsedData.latitude === 'string' ? parseFloat(parsedData.latitude) : parsedData.latitude;
+        const lng = typeof parsedData.longitude === 'string' ? parseFloat(parsedData.longitude) : parsedData.longitude;
+        
+        console.log(`   latitude PARSED: ${lat}`);
+        console.log(`   longitude PARSED: ${lng}`);
+        
+        // Validación estricta de coordenadas GPS
+        const isValidLat = lat !== null && lat !== undefined && !isNaN(lat) && lat !== 0 && Math.abs(lat) <= 90;
+        const isValidLng = lng !== null && lng !== undefined && !isNaN(lng) && lng !== 0 && Math.abs(lng) <= 180;
+        const isValidGPS = parsedData.gps_valid === true || parsedData.gps_valid === 'true';
+        
+        console.log(`   VALIDACIÓN: lat=${isValidLat}, lng=${isValidLng}, gps_valid=${isValidGPS}`);
+        
+        if (isValidGPS && isValidLat && isValidLng) {
           // Mapbox usa formato [longitude, latitude] 
-          parsedData.coordinates = [parsedData.longitude, parsedData.latitude];
-          console.log(`✅ Coordenadas válidas para Mapbox: [${parsedData.longitude}, ${parsedData.latitude}]`);
-          console.log(`🌍 Verificar ubicación: https://www.google.com/maps?q=${parsedData.latitude},${parsedData.longitude}`);
+          parsedData.coordinates = [lng, lat];
+          parsedData.latitude = lat; // Asegurar que están como números
+          parsedData.longitude = lng;
+          console.log(`✅ Coordenadas VÁLIDAS para Mapbox: [${lng}, ${lat}]`);
+          console.log(`🌍 Verificar ubicación: https://www.google.com/maps?q=${lat},${lng}`);
         } else {
           parsedData.coordinates = null;
-          console.warn(`❌ Coordenadas rechazadas: lat=${parsedData.latitude}, lng=${parsedData.longitude}, gps_valid=${parsedData.gps_valid}`);
+          console.warn(`❌ Coordenadas RECHAZADAS:`);
+          console.warn(`   Razones: gps_valid=${isValidGPS}, lat_válida=${isValidLat}, lng_válida=${isValidLng}`);
+          console.warn(`   Valores: lat=${lat}, lng=${lng}, gps_valid=${parsedData.gps_valid}`);
         }
       } else {
         parsedData.coordinates = null;

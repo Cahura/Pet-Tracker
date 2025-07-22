@@ -1081,7 +1081,6 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     // Add hover events to marker with improved debugging
     markerElement.addEventListener('mouseenter', (event) => {
       console.log('🎯 HOVER DETECTED! Pet marker hover enter:', animal.name);
-      console.log('🔍 Event details:', event);
       
       // Clear any pending close timeout
       if (this.popupTimeout) {
@@ -1093,18 +1092,16 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       this.selectedPet = animal;
       console.log('✅ Selected pet set to:', this.selectedPet);
       
-      // Force immediate popup show for testing
-      this.showPetPopup = true;
+      // Get marker position for popup
+      const rect = markerElement.getBoundingClientRect();
       this.popupPosition = {
-        x: event.clientX,
-        y: event.clientY - 100
+        x: rect.left + rect.width / 2,
+        y: rect.top - 180
       };
       
+      this.showPetPopup = true;
       console.log('✅ Popup activated at position:', this.popupPosition);
       this.cdr.detectChanges();
-      
-      // Also call the original method
-      this.showPetPopupAtMarker(event);
     });
 
     markerElement.addEventListener('mouseleave', (event) => {
@@ -1118,7 +1115,24 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         } else {
           console.log('⏸️ Popup still hovered, keeping open');
         }
-      }, 300); // Increased timeout for easier testing
+      }, 500); // Increased timeout for easier interaction
+    });
+
+    // Add click event for mobile devices
+    markerElement.addEventListener('click', (event) => {
+      console.log('👆 CLICK DETECTED! Pet marker clicked:', animal.name);
+      event.preventDefault();
+      event.stopPropagation();
+      
+      this.selectedPet = animal;
+      const rect = markerElement.getBoundingClientRect();
+      this.popupPosition = {
+        x: rect.left + rect.width / 2,
+        y: rect.top - 180
+      };
+      
+      this.showPetPopup = true;
+      this.cdr.detectChanges();
     });
 
     // Create and add marker to map
@@ -1830,15 +1844,26 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
           
           // Cambiar automáticamente a ubicación GPS real cuando se conecte por primera vez
           if (dataToProcess.longitude && dataToProcess.latitude && 
-              dataToProcess.longitude !== 0 && dataToProcess.latitude !== 0) {
+              dataToProcess.longitude !== 0 && dataToProcess.latitude !== 0 &&
+              dataToProcess.gps_valid === true) {
             const realCoordinates: [number, number] = [dataToProcess.longitude, dataToProcess.latitude];
             console.log('🎯 ESP32C6 conectado: cambiando de UPC Monterrico a ubicación GPS real:', realCoordinates);
+            console.log(`🌍 Ubicación Google Maps: https://www.google.com/maps?q=${dataToProcess.latitude},${dataToProcess.longitude}`);
             this.updatePetMarkerPosition(realCoordinates, false);
+          } else {
+            console.warn('⚠️ ESP32C6 conectado pero coordenadas GPS inválidas:', {
+              lat: dataToProcess.latitude,
+              lng: dataToProcess.longitude,
+              gps_valid: dataToProcess.gps_valid
+            });
           }
         }
         
         // Actualizar ubicación solo si GPS es válido y ha cambiado
-        if (dataToProcess.gps_valid && dataToProcess.latitude && dataToProcess.longitude) {
+        if (dataToProcess.gps_valid === true && dataToProcess.latitude && dataToProcess.longitude &&
+            dataToProcess.latitude !== 0 && dataToProcess.longitude !== 0 &&
+            Math.abs(dataToProcess.latitude) <= 90 && Math.abs(dataToProcess.longitude) <= 180) {
+          
           const newLocation = {
             petId: dataToProcess.petId.toString(),
             latitude: dataToProcess.latitude,
@@ -1847,14 +1872,32 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
             gps_valid: dataToProcess.gps_valid
           };
           
-          // Solo actualizar si es significativamente diferente
+          console.log('🔍 Validando nueva ubicación GPS:', {
+            lat: newLocation.latitude,
+            lng: newLocation.longitude,
+            gps_valid: newLocation.gps_valid,
+            googleMapsUrl: `https://www.google.com/maps?q=${newLocation.latitude},${newLocation.longitude}`
+          });
+          
+          // Solo actualizar si es significativamente diferente (>10 metros)
           if (!this.lastLocationUpdate || 
-              Math.abs(this.lastLocationUpdate.latitude - newLocation.latitude) > 0.00001 ||
-              Math.abs(this.lastLocationUpdate.longitude - newLocation.longitude) > 0.00001) {
+              Math.abs(this.lastLocationUpdate.latitude - newLocation.latitude) > 0.0001 ||
+              Math.abs(this.lastLocationUpdate.longitude - newLocation.longitude) > 0.0001) {
             
+            console.log('✅ Ubicación GPS actualizada:', newLocation);
             this.lastLocationUpdate = newLocation;
             this.updatePetLocation(this.lastLocationUpdate);
+          } else {
+            console.log('ℹ️ Ubicación GPS sin cambios significativos');
           }
+        } else {
+          console.warn('❌ GPS inválido o coordenadas fuera de rango:', {
+            gps_valid: dataToProcess.gps_valid,
+            lat: dataToProcess.latitude,
+            lng: dataToProcess.longitude,
+            lat_valid: Math.abs(dataToProcess.latitude || 0) <= 90,
+            lng_valid: Math.abs(dataToProcess.longitude || 0) <= 180
+          });
         }
         
         // Actualizar IMU
@@ -1933,9 +1976,13 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       
       // Si ESP32C6 está conectado y hay coordenadas válidas, usar ubicación real del GPS
       if (this.isESP32Connected && locationData.longitude && locationData.latitude && 
-          locationData.longitude !== 0 && locationData.latitude !== 0) {
+          locationData.longitude !== 0 && locationData.latitude !== 0 && 
+          locationData.gps_valid === true &&
+          Math.abs(locationData.latitude) <= 90 && Math.abs(locationData.longitude) <= 180) {
+        
         const newCoordinates: [number, number] = [locationData.longitude, locationData.latitude];
         console.log('✅ ESP32C6 conectado: actualizando con coordenadas GPS reales:', newCoordinates);
+        console.log(`🌍 Google Maps: https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}`);
         
         this.updatePetMarkerPosition(newCoordinates, false); // NO centrar automáticamente
         
@@ -1947,7 +1994,14 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         
       } else {
         // ESP32C6 conectado pero coordenadas inválidas - mantener última ubicación conocida
-        console.log('⚠️ ESP32C6 conectado pero coordenadas inválidas - manteniendo ubicación actual');
+        console.warn('⚠️ ESP32C6 conectado pero coordenadas GPS inválidas:', {
+          gps_valid: locationData.gps_valid,
+          lat: locationData.latitude,
+          lng: locationData.longitude,
+          lat_range: Math.abs(locationData.latitude) <= 90,
+          lng_range: Math.abs(locationData.longitude) <= 180
+        });
+        console.log('📍 Manteniendo ubicación actual del marcador');
       }
     } else {
       console.log('🚫 updatePetLocation ignorado:', {

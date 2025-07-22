@@ -1041,7 +1041,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
   // Inicializar mascota Max por defecto en UPC Monterrico
   private initializeDefaultPet(): void {
-    console.log('🐕 Inicializando mascota Max por defecto en UPC Monterrico');
+    console.log('🐕 ===============================================');
+    console.log('🐕 INICIALIZANDO MASCOTA MAX EN UPC MONTERRICO');
+    console.log('🐕 ===============================================');
     
     // Crear datos de mascota por defecto (Max)
     const defaultPet = {
@@ -1056,14 +1058,21 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
       activityState: 'disconnected' // Mostrar como desconectado inicialmente
     };
     
+    console.log('🏫 Coordenadas UPC Monterrico:', this.UPC_MONTERRICO_COORDS);
+    console.log('🏫 Google Maps UPC: https://www.google.com/maps?q=-12.0635,-76.9717');
+    
     // Configurar datos actuales
     this.currentPetData = defaultPet;
     this.selectedPet = defaultPet;
+    
+    // Actualizar petLocation a UPC Monterrico
+    this.petLocation = this.UPC_MONTERRICO_COORDS;
     
     // Crear marcador en UPC Monterrico
     this.addPetMarkerWithAnimal(defaultPet);
     
     console.log('✅ Mascota Max inicializada en UPC Monterrico:', this.UPC_MONTERRICO_COORDS);
+    console.log('🐕 ===============================================');
   }
 
   private updateMarkerSize(): void {
@@ -1128,9 +1137,18 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     
     console.log('Marker HTML created with icon:', petIcon);
 
+    // DEBUGGING: Agregar verificación de que los eventos se registren correctamente
+    console.log('🎯 ===============================================');
+    console.log('🎯 REGISTRANDO EVENT LISTENERS PARA HOVER/CLICK');
+    console.log('🎯 Mascota:', animal.name);
+    console.log('🎯 Elemento marcador:', markerElement);
+    console.log('🎯 ===============================================');
+
     // Add hover events to marker with improved debugging
     markerElement.addEventListener('mouseenter', (event) => {
-      console.log('🎯 HOVER DETECTED! Pet marker hover enter:', animal.name);
+      console.log('🎯 ⭐ HOVER DETECTED! Pet marker hover enter:', animal.name);
+      console.log('🎯 ⭐ Event object:', event);
+      console.log('🎯 ⭐ Target element:', event.target);
       
       // Clear any pending close timeout
       if (this.popupTimeout) {
@@ -1155,7 +1173,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
     });
 
     markerElement.addEventListener('mouseleave', (event) => {
-      console.log('🎯 HOVER END! Pet marker hover leave:', animal.name);
+      console.log('🎯 ⭐ HOVER END! Pet marker hover leave:', animal.name);
+      console.log('🎯 ⭐ Event object:', event);
+      console.log('🎯 ⭐ Target element:', event.target);
       
       // Don't close immediately, wait a bit to see if user moves to popup
       this.popupTimeout = setTimeout(() => {
@@ -1170,7 +1190,9 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
 
     // Add click event for mobile devices
     markerElement.addEventListener('click', (event) => {
-      console.log('👆 CLICK DETECTED! Pet marker clicked:', animal.name);
+      console.log('👆 ⭐ CLICK DETECTED! Pet marker clicked:', animal.name);
+      console.log('👆 ⭐ Event object:', event);
+      console.log('👆 ⭐ Target element:', event.target);
       event.preventDefault();
       event.stopPropagation();
       
@@ -1181,8 +1203,12 @@ export class MapSimpleComponent implements OnInit, OnDestroy {
         y: rect.top - 180
       };
       
+      console.log('👆 ⭐ Popup position calculated:', this.popupPosition);
+      
       this.showPetPopup = true;
       this.cdr.detectChanges();
+      
+      console.log('👆 ⭐ Popup should be visible now. showPetPopup =', this.showPetPopup);
     });
 
     // Create and add marker to map

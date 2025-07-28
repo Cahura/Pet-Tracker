@@ -755,7 +755,7 @@ SOFTWARE.
 <div align="center">
   <p><strong>⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub ⭐</strong></p>
   
-  <p>Desarrollado con ❤️ para la comunidad de mascotas</p>
+  <p>Desarrollado para la comunidad de mascotas</p>
   
   <img src="./huella.png" alt="Pet Tracker" width="60" height="60">
 </div>
